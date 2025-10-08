@@ -15,33 +15,28 @@ wx0 = 0.45; % rad s^-1
 wy0 = 0.52; % rad s^-1
 wz0 = 0.55; % rad s^-1
 
-%% for verification
-wxdot0 = ((iy - iz) / ix) * wy0 * wz0;
-wydot0 = ((iz - ix) / iy) * wz0 * wx0;
-wzdot0 = ((ix - iy) / iz) * wx0 * wy0;
+%% simulation options
+sim_options.SolverType = "Fixed-step";
+sim_options.Solver = "ode4";
+sim_options.FixedStep = "0.1";
+sim_options.StartTime = "0";
+sim_options.StopTime = "100";
 
 %% get simulation outputs
-simout = sim('lab_3_task_1_simulink');
-wxdot = simout.wxdot;
-wydot = simout.wydot;
-wzdot = simout.wzdot;
+simout = sim('lab_3_task_1_simulink', sim_options);
+wx = simout.wx;
+wy = simout.wy;
+wz = simout.wz;
 
 %% plot data
 figure()
-plot(wxdot)
+plot(wx)
 xlabel("Time (s)")
-ylabel("Angular Acceleration (rad s^-2)")
+ylabel("Angular Velocity (rad s^-1)")
 title("Rotational Motion fo a 3U Cubesat")
 grid on
 hold on
-plot(wydot)
-plot(wzdot)
-legend("wxdot", "wydot", "wzdot")
+plot(wy)
+plot(wz)
+legend("wx", "wy", "wz")
 hold off
-
-%% verify initial conditions
-disp("=== CONTROL INTIAL CONDITIONS ===")
-fprintf("initial wxdot: CALC %d SIM: %d\n", wxdot0, wxdot.Data(1))
-fprintf("initial wydot: CALC %d SIM: %d\n", wydot0, wydot.Data(1))
-fprintf("initial wzdot: CALC %d SIM: %d\n", wzdot0, wzdot.Data(1))
-disp("=== CONTROL INTIAL CONDITIONS ===")
