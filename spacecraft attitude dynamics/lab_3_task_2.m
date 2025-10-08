@@ -21,13 +21,13 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.1";
 sim_options.StartTime = "0";
-sim_options.StopTime = "100";
+sim_options.StopTime = "50";
 
 % analytical solution
 wx0 = w(1); % Initial angular velocity for x-axis
 wy0 = w(2); % Initial angular velocity for y-axis
 wz0 = w(3); % Initial angular velocity for z-axis
-t = 0:0.1:100;
+t = 0:0.1:50;
 
 lambda = ((iz - ix) / ix) * wz0;
 wx_t = wx0*cos(lambda*t) - wy0*sin(lambda*t);
