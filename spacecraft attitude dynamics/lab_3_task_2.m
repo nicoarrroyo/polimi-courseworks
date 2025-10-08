@@ -27,7 +27,9 @@ sim_options.StopTime = "50";
 wx0 = w(1); % Initial angular velocity for x-axis
 wy0 = w(2); % Initial angular velocity for y-axis
 wz0 = w(3); % Initial angular velocity for z-axis
-t = 0:0.1:50;
+t = str2double(sim_options.StartTime) : ...
+    str2double(sim_options.FixedStep) : ...
+    str2double(sim_options.StopTime);
 
 lambda = ((iz - ix) / ix) * wz0;
 wx_t = wx0*cos(lambda*t) - wy0*sin(lambda*t);
@@ -44,20 +46,34 @@ wzsim = wsim(:, 3);
 
 % plot data
 figure()
-plot(t, wxsim, "g")
+plot(t, wxsim, "r")
 xlabel("Time (s)")
 ylabel("Angular Acceleration (rad s^-2)")
-title("Rotational Motion fo a 3U Cubesat")
+title("Rotational Motion for a 3U Cubesat")
 grid on
 hold on
-plot(t, wysim, "b")
-plot(t, wzsim, "r")
+plot(t, wysim, "g")
+plot(t, wzsim, "b")
 
-plot(t, wx_t, 'r--')
-plot(t, wy_t, 'g--')
-plot(t, wz_t, 'b--')
+plot(t, wx_t, 'b-.')
+plot(t, wy_t, 'r-.')
+plot(t, wz_t, 'g-.')
 legend("wxsim", "wysim", "wzsim", "wx_t", "wy_t", "wz_t")
 hold off
+
+% validation
+N = length(t);
+h_norm = zeros(N, 1);
+T = zeros(N, 1);
+
+for i = 1:N
+    % angular momentum conservation
+    h = I*wsim(i, :)';
+    h_norm(i) = norm(h);
+
+    % KE conservation
+    T(i) = wsim(i, :)*(I*wsim(i, :)');
+end
 
 %% ASYMMETRIC CASE
 ix_a = 0.070; % kg m^2
@@ -99,8 +115,8 @@ hold on
 plot(t, wysim_a, "g")
 plot(t, wzsim_a, "b")
 
-plot(t, wx_t_a, 'r--')
-plot(t, wy_t_a, 'g--')
-plot(t, wz_t_a, 'b--')
+plot(t, wx_t_a, 'b-.')
+plot(t, wy_t_a, 'r-.')
+plot(t, wz_t_a, 'g-.')
 legend("wxsim_a", "wysim_a", "wzsim_a", "wx_t_a", "wy_t_a", "wz_t_a")
 hold off

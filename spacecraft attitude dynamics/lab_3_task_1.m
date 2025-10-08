@@ -33,7 +33,7 @@ figure()
 plot(wx)
 xlabel("Time (s)")
 ylabel("Angular Velocity (rad s^-1)")
-title("Rotational Motion fo a 3U Cubesat")
+title("Rotational Motion for a 3U Cubesat")
 grid on
 hold on
 plot(wy)

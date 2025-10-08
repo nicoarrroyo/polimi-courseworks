@@ -15,12 +15,20 @@ I = diag([ix iy iz]);
 
 wi0 = 2*pi; % rad s^-1, i = spinning axis
 
+% simulation options
+sim_options.SolverType = "Fixed-step";
+sim_options.Solver = "ode4";
+sim_options.FixedStep = "0.01";
+sim_options.StartTime = "0";
+sim_options.StopTime = "16";
+
 for i = 1:1:3
     w0 = [0.01 0.01 0.01];
     w0(i) = wi0;
     
     %% get simulation outputs
-    simout = sim('lab_3_task_3_simulink');
+    simout = sim('lab_3_task_3_simulink', sim_options);
+    time = simout.tout;
     w = simout.w.Data;
     wxsim = w(:, 1);
     wysim = w(:, 2);
@@ -33,14 +41,14 @@ for i = 1:1:3
     
     %% plot data
     figure()
-    plot(wxdot, "g")
+    plot(time, wxdot, "r")
     xlabel("Time (s)")
     ylabel("Angular Acceleration (rad s^-2)")
     title("Rotational Motion for a 3U Cubesat")
     grid on
     hold on
-    plot(wydot, "b")
-    plot(wzdot, "r")
+    plot(time, wydot, "g")
+    plot(time, wzdot, "b")
     legend("wxdot", "wydot", "wzdot")
     hold off
 end
