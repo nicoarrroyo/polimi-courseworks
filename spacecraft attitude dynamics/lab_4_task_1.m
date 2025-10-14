@@ -17,7 +17,7 @@ I = diag([ix iy iz]);
 wx0 = 0.45;
 wy0 = 0.52;
 wz0 = 0.55;
-%w0 = [wx0 wy0 wz0];
+w0 = [wx0 wy0 wz0];
 
 A0 = eye(3);
 
@@ -32,15 +32,19 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode5";
 sim_options.FixedStep = "0.1";
 sim_options.StartTime = "0";
-sim_options.StopTime = "10";
+sim_options.StopTime = "100";
 
 %% run sim
 simout = sim("lab_4_task_1_simulink", sim_options);
 t = simout.tout;
-wx = simout.wx.Data;
-wy = simout.wy.Data;
-wz = simout.wz.Data;
-Asim = simout.A.data;
+w = simout.w.Data;
+wx = w(:, 1);
+wy = w(:, 2);
+wz = w(:, 3);
+
+A = simout.A.data;
+
+wdot = simout.wdot.Data;
 
 %% plot data
 figure()
@@ -53,4 +57,23 @@ hold on
 plot(t, wy, "g")
 plot(t, wz, "b")
 legend("wx", "wy", "wz")
+hold off
+
+%% plot data
+figure()
+plot(t, A(3, 2, 1))
+xlabel("Time (s)")
+ylabel("Attitude Parameter A")
+title("Rotational Motion for a 3U Cubesat")
+grid on
+hold off
+
+%% plot data
+figure()
+plot(t, wdot)
+xlabel("Time (s)")
+ylabel("Angular Acceleration (rad s^-2)")
+title("Rotational Motion for a 3U Cubesat")
+grid on
+legend("wdotx", "wdoty", "wdotz")
 hold off
