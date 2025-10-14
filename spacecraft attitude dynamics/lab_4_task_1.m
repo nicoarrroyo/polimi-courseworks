@@ -60,13 +60,13 @@ legend("wx", "wy", "wz")
 hold off
 
 %% plot data
-figure()
-plot(t, A(3, 2, 1))
-xlabel("Time (s)")
-ylabel("Attitude Parameter A")
-title("Rotational Motion for a 3U Cubesat")
-grid on
-hold off
+% figure()
+% plot(t, A(3, 2, 1))
+% xlabel("Time (s)")
+% ylabel("Attitude Parameter A")
+% title("Rotational Motion for a 3U Cubesat")
+% grid on
+% hold off
 
 %% plot data
 figure()
@@ -77,3 +77,7 @@ title("Rotational Motion for a 3U Cubesat")
 grid on
 legend("wdotx", "wdoty", "wdotz")
 hold off
+
+%% verify (task 2)
+
+verify = A(:, :, end) * A(:, :, end)'
