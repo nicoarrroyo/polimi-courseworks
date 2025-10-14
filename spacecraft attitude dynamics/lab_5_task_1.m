@@ -20,6 +20,9 @@ w0 = [wx0 wy0 wz0];
 
 A0 = eye(3);
 
+phi0 = 0.1;
+psi0 = 0.2;
+theta0 = 0.3;
 
 
 %% simulation options
@@ -30,7 +33,7 @@ sim_options.StartTime = "0";
 sim_options.StopTime = "100";
 
 %% run sim
-simout = sim("lab_4_task_1_simulink", sim_options);
+simout = sim("lab_5_task_1_simulink", sim_options);
 t = simout.tout;
 w = simout.w.Data;
 wx = w(:, 1);
@@ -41,7 +44,42 @@ A = simout.A.data;
 
 wdot = simout.wdot.Data;
 
-%% plot data
+phi = simout.phi.Data;
+psi = simout.psi.Data;
+theta = simout.theta.Data;
+angles = [phi, psi, theta];
+
+phidot = simout.phidot.Data;
+psidot = simout.psidot.Data;
+thetadot = simout.thetadot.Data;
+anglesdot = [phidot, psidot, thetadot];
+
+threshold = 0.5;
+total_counter = 0;
+
+% for j = 1:size(angles, 2)
+%     angle = angles(:, j);
+%     counter = 0;
+%     for i = 1:length(angle)
+%         if abs(angle(i) - pi/2) < threshold ||...
+%                 abs(angle(i) + pi/2) < threshold ||...
+%                 abs(angle(i) + 0) < threshold ||...
+%                 abs(angle(i) + pi) < threshold ||...
+%                 abs(angle(i) - pi) < threshold
+%             counter = counter + 1;
+%             try
+%                 angle(i) = angle(i-1);
+%             catch
+%                 angle(i) = angle(i+1);
+%             end
+%         end
+%     end
+%     angles(:, j) = angle;
+%     total_counter = total_counter + counter;
+% end
+% disp("patched " + num2str(counter) + " singularities")
+
+%% plot w data
 figure()
 plot(t, wx, "r")
 xlabel("Time (s)")
@@ -54,7 +92,7 @@ plot(t, wz, "b")
 legend("wx", "wy", "wz")
 hold off
 
-%% plot data
+%% plot DCM A data
 % figure()
 % plot(t, A(3, 2, 1))
 % xlabel("Time (s)")
@@ -63,7 +101,7 @@ hold off
 % grid on
 % hold off
 
-%% plot data
+%% plot wdot data
 figure()
 plot(t, wdot)
 xlabel("Time (s)")
@@ -74,5 +112,24 @@ legend("wdotx", "wdoty", "wdotz")
 hold off
 
 %% verify (task 2)
-
 verify = A(:, :, end) * A(:, :, end)'
+
+%% plot angles data
+figure()
+plot(t, angles)
+xlabel("Time (s)")
+ylabel("Angular Velocity (rad s^-1)")
+title("Rotational Motion for a 3U Cubesat")
+grid on
+legend("phi", "psi", "theta")
+hold off
+
+%% plot angles dot data
+figure()
+plot(t, anglesdot)
+xlabel("Time (s)")
+ylabel("Angular Velocity (rad s^-1)")
+title("Kinematics for a 3U Cubesat")
+grid on
+legend("phidot", "psidot", "thetadot")
+hold off
