@@ -65,6 +65,7 @@ for i = 1:length(T)
 end
 
 % %%% a. plot the orbit over 1 period T %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % get texture of earth
 earth_img = imread("EarthTexture.jpg");
 [x_earth, y_earth, z_earth] = sphere(50);
@@ -86,19 +87,57 @@ hold off
 
 % %%% b. plot the components, norm of h, e, over 5 periods. they should be 
 % %%% constant in magnitude and direction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % angular momentum
-figure("Name", "Angular Momentum")
+figure("Name", "Specific Angular Momentum")
+plot(T, h, "--");
+hold on
+plot(T, vecnorm(h, 2, 2), "--");
+xlabel("Time (s)"); ylabel("Specific Angular Momentum (km^2 s^-^1)");
+title("Specific Angular Momentum Components and Norm");
+legend("hx", "hy", "hz", "||h||");
+ylim(ylim*1.1)
+hold off
 
-
+% eccentricity
+figure("Name", "Eccentricity")
+plot(T, e, "--");
+hold on
+plot(T, vecnorm(e, 2, 2), "--");
+xlabel("Time (s)"); ylabel("Eccentricity (-)");
+title("Eccentricity Components and Norm");
+legend("ex", "ey", "ez", "||e||");
+ylim(ylim*1.1)
+hold off
 
 % %%% c. check that h and e remain perpendicular by plotting the error %%%%
-
+figure("Name", "Orthogonality Error of e and h")
+plot(T, e_dot_h);
+xlabel("Time (s)"); ylabel("e dot h (km^2 s^-^1)");
+title("Dot Product of e and h");
 
 % %%% d. plot specific energy over 5 periods. should be constant in time %%
-
+figure("Name", "Specific Energy")
+plot(T, specific_energy);
+hold on
+yline(specific_energy_0, "--")
+xlabel("Time (s)"); ylabel("Specific Energy (km^2 s^-^2)");
+title("Specific Energy Over 5 Periods");
+%ylim(1.1*ylim);
+legend("Calculated Specific Energy", "Initial Specific Energy");
+hold off
 
 % %%% e. plot the evolution of vr and vθ (vt) over 5 periods %%%%%%%%%%%%%%
 
+% radial velocity
+figure("Name", "Radial and Transverse Velocity")
+plot(T, v_radial);
+hold on
+plot(T, v_transverse);
+xlabel("Time (s)"); ylabel("Velocity (km s^-^1)");
+title("Radial and Transverse Velocity Over 5 Periods");
+ylim(1.1*ylim); legend("Radial Velocity", "Transverse Velocity");
+hold off
 
 
 
