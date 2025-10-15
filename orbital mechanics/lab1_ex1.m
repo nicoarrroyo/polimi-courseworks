@@ -1,6 +1,6 @@
 clear; close all; clc;
 
-% Exercise 1 - 2-Body Problem
+%% Exercise 1 - 2-Body Problem
 % Numerically integrate a Keplerian orbit (two-body problem)
 %% %%% 1. Implement the code to propogate the orbit %%%%%%%%%%%%%%%%%%%%%%%
 % a. identify states of the system and physical parameters involved
@@ -13,8 +13,8 @@ clear; close all; clc;
 mu_E = astroConstants(13); % [km^3 s^-2]
 
 % initial conditions
-r0 = [26578.137 0 0]; % [km]
-v0 = [0 2.221 3.137]; % [km s^-1]
+r0 = [6495 -970 -3622]; % [km]
+v0 = [4.752 2.130 7.950]; % [km s^-1]
 y0 = [r0 v0];
 
 % time span
@@ -65,14 +65,13 @@ for i = 1:length(T)
 end
 
 % %%% a. plot the orbit over 1 period T %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % get texture of earth
 earth_img = imread("EarthTexture.jpg");
 [x_earth, y_earth, z_earth] = sphere(50);
-radius = 6731;
-x_earth = radius * x_earth;
-y_earth = radius * y_earth;
-z_earth = -radius * z_earth;
+R_e = astroConstants(23); % earth radius [km]
+x_earth = R_e * x_earth;
+y_earth = R_e * y_earth;
+z_earth = -R_e * z_earth;
 
 % plot
 figure("Name", "Orbit Plot");
@@ -87,7 +86,6 @@ hold off
 
 % %%% b. plot the components, norm of h, e, over 5 periods. they should be 
 % %%% constant in magnitude and direction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % angular momentum
 figure("Name", "Specific Angular Momentum")
 plot(T, h, "--");
@@ -96,7 +94,7 @@ plot(T, vecnorm(h, 2, 2), "--");
 xlabel("Time (s)"); ylabel("Specific Angular Momentum (km^2 s^-^1)");
 title("Specific Angular Momentum Components and Norm");
 legend("hx", "hy", "hz", "||h||");
-ylim(ylim*1.1)
+ylim(ylim*1.1);
 hold off
 
 % eccentricity
@@ -107,7 +105,7 @@ plot(T, vecnorm(e, 2, 2), "--");
 xlabel("Time (s)"); ylabel("Eccentricity (-)");
 title("Eccentricity Components and Norm");
 legend("ex", "ey", "ez", "||e||");
-ylim(ylim*1.1)
+ylim(ylim*1.1);
 hold off
 
 % %%% c. check that h and e remain perpendicular by plotting the error %%%%
@@ -118,18 +116,15 @@ title("Dot Product of e and h");
 
 % %%% d. plot specific energy over 5 periods. should be constant in time %%
 figure("Name", "Specific Energy")
-plot(T, specific_energy);
+plot(T, specific_energy, "LineWidth", 0.8);
 hold on
 yline(specific_energy_0, "--")
 xlabel("Time (s)"); ylabel("Specific Energy (km^2 s^-^2)");
 title("Specific Energy Over 5 Periods");
-%ylim(1.1*ylim);
 legend("Calculated Specific Energy", "Initial Specific Energy");
 hold off
 
 % %%% e. plot the evolution of vr and vθ (vt) over 5 periods %%%%%%%%%%%%%%
-
-% radial velocity
 figure("Name", "Radial and Transverse Velocity")
 plot(T, v_radial);
 hold on
@@ -138,6 +133,3 @@ xlabel("Time (s)"); ylabel("Velocity (km s^-^1)");
 title("Radial and Transverse Velocity Over 5 Periods");
 ylim(1.1*ylim); legend("Radial Velocity", "Transverse Velocity");
 hold off
-
-
-
