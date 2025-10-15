@@ -26,7 +26,7 @@ tspan = linspace(0, 2*T, 1000);
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % integrate
-[T, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0, options);
 
 % get texture of earth
 earth_img = imread("EarthTexture.jpg");
@@ -62,7 +62,7 @@ a = 1/(2/norm(r0_1) - dot(v0_1,v0_1)/mu_E); % [km]
 T = 2*pi*sqrt(a^3/mu_E); % [s]
 tspan = linspace(0, 2*T, 1000);
 % integrate
-[T, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_1, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_1, options);
 % plot
 figure()
 plot3(Y(:,1), Y(:,2), Y(:,3), "-")
@@ -84,7 +84,7 @@ a = 1/(2/norm(r0_2) - dot(v0_2,v0_2)/mu_E); % [km]
 T = 2*pi*sqrt(a^3/mu_E); % [s]
 tspan = linspace(0, 2*T, 1000);
 % integrate
-[T, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_2, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_2, options);
 % plot
 figure()
 plot3(Y(:,1), Y(:,2), Y(:,3), "-")
@@ -122,10 +122,18 @@ hold off
 
 %% %%% 3. Analyse the results %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % a. plot the orbit over 1 period T
+
+
 % b. plot the components, norm of h, e, over 5 periods. they should be 
 % constant in magnitude and direction. 
+
+
 % c. check that h and e remain perpendicular by plotting the error
+
+
 % d. plot specific energy over 5 periods. should be constant in time. 
+
+
 % e. plot the evolution of vr and vθ (vt) over 5 periods. 
 
 % Calculate specific energy
