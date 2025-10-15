@@ -26,7 +26,7 @@ tspan = linspace(0, 2*T, 1000);
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % integrate
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0, options);
+[T, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0, options);
 
 % get texture of earth
 earth_img = imread("EarthTexture.jpg");
@@ -52,77 +52,12 @@ hold off
 % %%% conditions and primary attracting body %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % a. for a closed orbit, initial conditions should correspond to a 
 % negative specific energy. 
-
-% initial conditions
-r0_1 = [10000 0 0]; % [km]
-v0_1 = [0 2.221 3.137]; % [km s^-1]
-y0_1 = [r0_1 v0_1];
-% time span
-a = 1/(2/norm(r0_1) - dot(v0_1,v0_1)/mu_E); % [km]
-T = 2*pi*sqrt(a^3/mu_E); % [s]
-tspan = linspace(0, 2*T, 1000);
-% integrate
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_1, options);
-% plot
-figure()
-plot3(Y(:,1), Y(:,2), Y(:,3), "-")
-hold on
-surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
-    "CData", earth_img, "EdgeColor", "none")
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
-title("Two-body problem orbit");
-axis equal;
-grid on;
-hold off
-
-% initial conditions
-r0_2 = [20000 0 0]; % [km]
-v0_2 = [0 2.221 3.137]; % [km s^-1]
-y0_2 = [r0_2 v0_2];
-% time span
-a = 1/(2/norm(r0_2) - dot(v0_2,v0_2)/mu_E); % [km]
-T = 2*pi*sqrt(a^3/mu_E); % [s]
-tspan = linspace(0, 2*T, 1000);
-% integrate
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_2, options);
-% plot
-figure()
-plot3(Y(:,1), Y(:,2), Y(:,3), "-")
-hold on
-surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
-    "CData", earth_img, "EdgeColor", "none")
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
-title("Two-body problem orbit");
-axis equal;
-grid on;
-hold off
-
-% initial conditions
-r0_3 = [50000 0 0]; % [km]
-v0_3 = [0 2.221 3.137]; % [km s^-1]
-y0_3 = [r0_3 v0_3];
-% time span
-a = 1/(2/norm(r0_3) - dot(v0_3,v0_3)/mu_E); % [km]
-T = 2*pi*sqrt(a^3/mu_E); % [s]
-tspan = linspace(0, 2*T, 1000);
-% integrate
-[T, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0_3, options);
-% plot
-figure()
-plot3(Y(:,1), Y(:,2), Y(:,3), "-")
-hold on
-surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
-    "CData", earth_img, "EdgeColor", "none")
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
-title("Two-body problem orbit");
-axis equal;
-grid on;
-hold off
-
+% did this; removed to save space
 
 %% %%% 3. Analyse the results %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % a. plot the orbit over 1 period T
-
+figure()
+plot3()
 
 % b. plot the components, norm of h, e, over 5 periods. they should be 
 % constant in magnitude and direction. 
