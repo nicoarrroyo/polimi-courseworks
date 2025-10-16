@@ -13,7 +13,7 @@ y0 = [r0 v0];
 
 % time span
 a = 1/(2/norm(r0) - dot(v0,v0)/mu_E); % [km]
-tspan = linspace(0, 365*24*3600, 5000);
+tspan = linspace(0, 365*24*3600, 50000);
 
 % set ODE solver conditions
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
@@ -67,25 +67,26 @@ z_earth = -R_e * z_earth;
 
 % plot
 figure("Name", "Orbit Plot");
-plot3(r_j2(:, 1), r_j2(:, 2), r_j2(:, 3));
+plot3(r_2bp(:, 1), r_2bp(:, 2), r_2bp(:, 3), "r");
 hold on
-patch(r_j2(:, 1), r_j2(:, 2), r_j2(:, 3), T_j2, "FaceColor", "none", "EdgeColor", "interp")
+patch(r_j2(:, 1), r_j2(:, 2), r_j2(:, 3), T_j2/(24*3600), "FaceColor", "none", "EdgeColor", "interp")
 colorbar;
 surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
     "CData", earth_img, "EdgeColor", "none")
 xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
 title("Two-body problem orbit");
 axis equal; grid on;
+legend("Unperturbed 2BP", "J2 Perturbed 2BP");
 hold off
 
 % %%% b. plot the components, norm of h, e, over 5 periods. they should be 
 % %%% constant in magnitude and direction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % angular momentum
 figure("Name", "Specific Angular Momentum")
-plot(T_j2, h, "--");
+plot(T_j2/(24*3600), h, "--");
 hold on
-plot(T_j2, vecnorm(h, 2, 2), "--");
-xlabel("Time (s)"); ylabel("Specific Angular Momentum (km^2 s^-^1)");
+plot(T_j2/(24*3600), vecnorm(h, 2, 2), "--");
+xlabel("Time (days)"); ylabel("Specific Angular Momentum (km^2 s^-^1)");
 title("Specific Angular Momentum Components and Norm");
 legend("hx", "hy", "hz", "||h||");
 ylim(ylim*1.1);
@@ -93,10 +94,10 @@ hold off
 
 % eccentricity
 figure("Name", "Eccentricity")
-plot(T_j2, e, "--");
+plot(T_j2/(24*3600), e, "--");
 hold on
-plot(T_j2, vecnorm(e, 2, 2), "--");
-xlabel("Time (s)"); ylabel("Eccentricity (-)");
+plot(T_j2/(24*3600), vecnorm(e, 2, 2), "--");
+xlabel("Time (days)"); ylabel("Eccentricity (-)");
 title("Eccentricity Components and Norm");
 legend("ex", "ey", "ez", "||e||");
 ylim(ylim*1.1);
@@ -104,26 +105,26 @@ hold off
 
 % %%% c. check that h and e remain perpendicular by plotting the error %%%%
 figure("Name", "Orthogonality Error of e and h")
-plot(T_j2, e_dot_h);
-xlabel("Time (s)"); ylabel("e dot h (km^2 s^-^1)");
+plot(T_j2/(24*3600), e_dot_h);
+xlabel("Time (days)"); ylabel("e dot h (km^2 s^-^1)");
 title("Dot Product of e and h");
 
 % %%% d. plot specific energy over 5 periods. should be constant in time %%
 figure("Name", "Specific Energy")
-plot(T_j2, specific_energy, "LineWidth", 0.8);
+plot(T_j2/(24*3600), specific_energy, "LineWidth", 0.8);
 hold on
 yline(specific_energy_0, "--")
-xlabel("Time (s)"); ylabel("Specific Energy (km^2 s^-^2)");
+xlabel("Time (days)"); ylabel("Specific Energy (km^2 s^-^2)");
 title("Specific Energy Over 5 Periods");
 legend("Calculated Specific Energy", "Initial Specific Energy");
 hold off
 
 % %%% e. plot the evolution of vr and vθ (vt) over 5 periods %%%%%%%%%%%%%%
 figure("Name", "Radial and Transverse Velocity")
-plot(T_j2, v_radial);
+plot(T_j2/(24*3600), v_radial);
 hold on
-plot(T_j2, v_transverse);
-xlabel("Time (s)"); ylabel("Velocity (km s^-^1)");
+plot(T_j2/(24*3600), v_transverse);
+xlabel("Time (days)"); ylabel("Velocity (km s^-^1)");
 title("Radial and Transverse Velocity Over 5 Periods");
 ylim(1.1*ylim); legend("Radial Velocity", "Transverse Velocity");
 hold off
