@@ -13,11 +13,14 @@ iz = 0.08;
 I = diag([ ix iy iz ]);
 
 % angular velocities
-wx0 = 1e-6;
-wy0 = 1e-6;
+wx0 = 0;
+wy0 = 0;
+
 n = sqrt(G*M_e/R^3);
 wz0 = n;
 w0 = [wx0 wy0 wz0];
+
+wLN = [0; 0; n;];
 
 % DCM
 ABN0 = eye(3);
@@ -42,16 +45,18 @@ wx = w(:, 1);
 wy = w(:, 2);
 wz = w(:, 3);
 
+wBL = simout.wBL.Data;
+
 % angular acceleration
 wdot = simout.wdot.Data;
 wxdot = wdot(:, 1);
 wzdot = wdot(:, 2);
 wydot = wdot(:, 3);
 
-% DCM
-A = simout.A.Data;
+% DCM - body
+ABN = simout.ABN.Data;
 
-% 
+% DCM - desired
 
 
 
