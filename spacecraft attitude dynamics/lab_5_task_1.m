@@ -24,7 +24,6 @@ phi0 = 0.1;
 psi0 = 0.2;
 theta0 = 0.3;
 
-
 %% simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode5";
