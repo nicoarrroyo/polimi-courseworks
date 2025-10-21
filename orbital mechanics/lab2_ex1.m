@@ -3,59 +3,37 @@ clear; close all; clc;
 %% constants / initial conditions
 w_E = 15.04; % earth rotation velocity [deg hr^-1]
 mu_E = astroConstants(13); % earth gravitational parameter [km^3 s^-2]
-R_e = astroConstants(23); % earth radius [km]
 earth_img = imread("EarthTexture.jpg");
 
 %% %%% generic orbit case %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% intial conditions
-% e = 0.1976; % eccentricity [-]
-i = 60; % inclination [deg]
-% omega = 270; % [deg]
-% w = 45; % [deg]
-% f0 = 230; % [deg]
+r0 = [-4578.219 -801.084 -7929.708]; % initial position vector [km]
+v0 = [0.800 -6.037 1.385]; % initial velocity vector [km s^-1]
 orbits = 3.25; % number of orbits to propogate for [-]
-
-r0 = [-4578.219 -801.084 -7929.708]; % position vector [km]
-v0 = [0.800 -6.037 1.385]; % velocity vector [km s^-1]
-y0 = [r0 v0]; % state vector
-
-a = 1 / (2 / norm(r0) - dot(v0,v0) / mu_E); % semi-major axis [km]
-
-%% time span
-period = 2 * pi * sqrt(a^3 / mu_E); % orbital period [s]
-tspan = linspace(0, orbits*period, 10000);
-
-%% orbit propogation
-% set solver conditions
-options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
-
-% integrate
-[T, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0, options);
-r = Y(:, 1:3); % FOR TROUBLESHOOTING
-
-%% ground track calculation and plotting
-% calculation
-[long, lat] = ground_track(Y, T, w_E); % longitude and latitude [radians]
-
-% plotting
-figure("Name", "Generic Orbit Ground Track Plot")
-image([-180 180], [90 -90], earth_img);
-
-hold on
-plot(rad2deg(long), rad2deg(lat), ".")
-xline(rad2deg(long(1)), "r");
-xline(rad2deg(long(end)), "g");
-
-title("ground track plot")
-xlabel("longitude [deg]"); ylabel("latitude [deg]");
-grid on;
-ylim([-90 90]); xlim([-180 180]);
-legend("ground track", "initial long", "final long")
-set(gca, "Ydir", "normal")
-hold off
+title = "Generic Orbit";
+lab2_func( r0, v0, orbits, title )
 
 %% %%% molniya orbit case %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+r0 = [3108.128 -1040.299 -6090.022]; % initial position vector [km]
+v0 = [5.743 8.055 1.555]; % initial velocity vector [km s^-1]
+orbits = 30; % number of orbits to propogate for [-]
+title = "Molniya Orbit";
+lab2_func( r0, v0, orbits, title )
 
-
-%% %%% three circular LEO orbits %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%% %%% three circular LEO orbits case %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+r0 = [ % initial position vector [km]
+    [5493.312 4609.436 0.000]
+    [5493.312 3991.889 2304.718]
+    [5493.312 -641.510 4564.578]
+    ];
+v0 = [ % initial velocity vector [km s^-1]
+    [-4.792 5.711 0.000]
+    [-4.792 4.946 2.856]
+    [-4.792 -0.795 5.656]
+    ];
+orbits = 5; % number of orbits to propogate for [-]
+for i = 1:height(r0)
+    title = "Circular LEO" + " " + num2str(i);
+    r_0 = r0(i, :);
+    v_0 = v0(i, :);
+    lab2_func( r_0, v_0, orbits, title )
+end
