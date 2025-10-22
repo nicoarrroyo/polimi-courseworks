@@ -26,8 +26,8 @@ theta0 = 0.3;
 
 %% simulation options
 sim_options.SolverType = "Fixed-step";
-sim_options.Solver = "ode5";
-sim_options.FixedStep = "0.1";
+sim_options.Solver = "ode4";
+sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
 sim_options.StopTime = "100";
 
@@ -55,28 +55,6 @@ anglesdot = [phidot, psidot, thetadot];
 
 threshold = 0.5;
 total_counter = 0;
-
-% for j = 1:size(angles, 2)
-%     angle = angles(:, j);
-%     counter = 0;
-%     for i = 1:length(angle)
-%         if abs(angle(i) - pi/2) < threshold ||...
-%                 abs(angle(i) + pi/2) < threshold ||...
-%                 abs(angle(i) + 0) < threshold ||...
-%                 abs(angle(i) + pi) < threshold ||...
-%                 abs(angle(i) - pi) < threshold
-%             counter = counter + 1;
-%             try
-%                 angle(i) = angle(i-1);
-%             catch
-%                 angle(i) = angle(i+1);
-%             end
-%         end
-%     end
-%     angles(:, j) = angle;
-%     total_counter = total_counter + counter;
-% end
-% disp("patched " + num2str(counter) + " singularities")
 
 %% plot w data
 figure()

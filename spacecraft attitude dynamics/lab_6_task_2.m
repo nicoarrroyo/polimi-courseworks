@@ -17,7 +17,7 @@ I = diag([ ix iy iz ]);
 wx0 = 0;
 wy0 = 0;
 
-n = sqrt(G*M_e/R^3);
+n = sqrt(G*M_e/(R^3));
 wz0 = n;
 w0 = [wx0 wy0 wz0];
 
@@ -61,7 +61,5 @@ ABN = simout.ABN.Data;
 
 % DCM - desired
 
-
-test = simout.test;
 
 
