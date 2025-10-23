@@ -27,7 +27,7 @@ theta0 = 0;
 %% simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.01";
+sim_options.FixedStep = "0.5";
 sim_options.StartTime = "0";
 sim_options.StopTime = "100";
 
@@ -83,8 +83,8 @@ verify = A(:, :, end) * A(:, :, end)'
 figure()
 plot(t, angles)
 xlabel("Time (s)")
-ylabel("Angular Velocity (rad s^-1)")
-title("Rotational Motion for a 3U Cubesat")
+ylabel("Euler Angles [rad]")
+title("Euler Angles (phi, theta, psi)")
 grid on
 legend("phi", "psi", "theta")
 hold off
@@ -93,8 +93,8 @@ hold off
 figure()
 plot(t, anglesdot)
 xlabel("Time (s)")
-ylabel("Angular Velocity (rad s^-1)")
-title("Kinematics for a 3U Cubesat")
+ylabel("Time Derivative of Euler Angles [rad/s]")
+title("Time Derivative of Euler Angles (phi, theta, psi)")
 grid on
 legend("phidot", "psidot", "thetadot")
 hold off
