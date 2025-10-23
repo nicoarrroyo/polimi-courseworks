@@ -34,7 +34,7 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.05";
 sim_options.StartTime = "0";
-sim_options.StopTime = "50";
+sim_options.StopTime = "5";
 
 %% outputs
 simout = sim("lab_6_task_2_simulink", sim_options);
