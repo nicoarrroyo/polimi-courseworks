@@ -51,6 +51,8 @@ psidot = simout.psidot.Data;
 thetadot = simout.thetadot.Data;
 anglesdot = [phidot, psidot, thetadot];
 
+A = simout.A.Data;
+
 %% plot w data
 figure()
 plot(t, wx, "r")
