@@ -20,9 +20,9 @@ w0 = [wx0 wy0 wz0];
 
 A0 = eye(3);
 
-phi0 = 0.1;
-psi0 = 0.2;
-theta0 = 0.3;
+phi0 = 0;
+psi0 = 0;
+theta0 = 0;
 
 %% simulation options
 sim_options.SolverType = "Fixed-step";
@@ -39,8 +39,6 @@ wx = w(:, 1);
 wy = w(:, 2);
 wz = w(:, 3);
 
-A = simout.A.data;
-
 wdot = simout.wdot.Data;
 
 phi = simout.phi.Data;
@@ -52,9 +50,6 @@ phidot = simout.phidot.Data;
 psidot = simout.psidot.Data;
 thetadot = simout.thetadot.Data;
 anglesdot = [phidot, psidot, thetadot];
-
-threshold = 0.5;
-total_counter = 0;
 
 %% plot w data
 figure()
@@ -68,15 +63,6 @@ plot(t, wy, "g")
 plot(t, wz, "b")
 legend("wx", "wy", "wz")
 hold off
-
-%% plot DCM A data
-% figure()
-% plot(t, A(3, 2, 1))
-% xlabel("Time (s)")
-% ylabel("Attitude Parameter A")
-% title("Rotational Motion for a 3U Cubesat")
-% grid on
-% hold off
 
 %% plot wdot data
 figure()
