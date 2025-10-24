@@ -9,10 +9,7 @@ iy = 0.055;
 iz = 0.025;
 I = diag([ix iy iz]);
 
-% wx0 = 0.1;
-% wx0 = -0.1;
-wx0 = 2*pi;
-% wx0 = -2*pi;
+wx0 = 0.2 + (2*pi - 0.2)*rand;
 wy0 = 0.1;
 wz0 = 0.1;
 w0 = [wx0 wy0 wz0];

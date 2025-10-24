@@ -4,8 +4,8 @@ clear; close all; clc;
 % constants
 G = 6.67e-11;
 M_e = 5.97e24;
-R = 6371 + 400;
-mu_E = astroConstants(13);
+R = (6371 + 400)*10^3;
+mu_E = astroConstants(13)*10^9;
 
 % inertia
 ix = 0.04;
