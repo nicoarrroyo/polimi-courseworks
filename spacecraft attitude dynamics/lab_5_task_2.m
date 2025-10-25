@@ -2,7 +2,7 @@ clear
 clc
 close all
 
-% lab 5 task 2
+% lab 5 task 2 use quiver3
 %% set initial conditions
 ix = 0.070;
 iy = 0.055;
