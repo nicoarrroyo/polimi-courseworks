@@ -1,8 +1,8 @@
 clear
-%clc
+clc
 close all
 
-% lab 5 task 2 use quiver3
+% lab 5 task 2
 %% set initial conditions
 ix = 0.070;
 iy = 0.055;
@@ -64,7 +64,9 @@ sim_options.StartTime = "0";
 sim_options.StopTime = "15";
 
 %% run sim
+disp("running sim")
 simout = sim("lab_5_task_2_simulink", sim_options);
+disp("sim complete")
 t = simout.tout;
 w = simout.w.Data;
 wx = w(:, 1);
