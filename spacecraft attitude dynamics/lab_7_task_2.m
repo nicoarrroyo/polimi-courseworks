@@ -36,7 +36,7 @@ c = 2.998e8; % speed of light [m s^-1]
 P = F_e / c;
 
 % physical satellite properties
-N_B = [
+N_B = [ % FLIP THIS
     [1 0 0] % body surface normal vectors
     [0 1 0]
     [-1 0 0]
