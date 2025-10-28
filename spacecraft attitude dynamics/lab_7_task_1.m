@@ -2,43 +2,40 @@ clear; close all; clc;
 
 %% initial conditions
 % constants
-mu_E = astroConstants(13)*10^9;
+mu_E = astroConstants(13);
 
 % inertia
-ix = 0.04;
-iy = 0.06;
-iz = 0.08;
+ix = 0.070;
+iy = 0.055;
+iz = 0.025;
 I = diag([ ix iy iz ]);
 
 % position
-a = 300; % SMA [km]
-e = 0; % eccentricity []
-TA0 = 0; % initial true anomaly
-inc = 0; % inclination [deg]
+a = 7093; % SMA [km]
+e = 0.5; % eccentricity []
+TA0 = deg2rad(0); % initial true anomaly [rad]
+inc = deg2rad(98.27); % inclination [rad]
 n = sqrt(mu_E/(a^3)); % average rotational rate
 T = 2*pi * n; % period [s]
 
 % sun
 n_sun = 2*pi / (60*60*24*365); % average rotational rate (sun)
-e_sun = 23.45; % eccentricity (sun) []
+r_sun = 1.496e8;
+e_sun = deg2rad(23.45); % eccentricity (sun) []
 
 % angular velocities
 w0 = [0.45; 0.52; 0.55;];
 
-w_LN = [0; 0; n;];
 
 % DCM
 A_BN0 = eye(3);
-A_NL0 = A_BN0;
-
-c = [1; 0; 0;];
 
 % simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.05";
+sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = num2str(T);
+sim_options.StopTime = "100"%num2str(T);
 
 %% outputs
 disp("running sim")
@@ -62,4 +59,64 @@ wydot = wdot(:, 3);
 
 % DCM - body
 A_BN = simout.A_BN.Data;
-animate_frame(A_BN, t, "SpeedUp", str2double(sim_options.StopTime)/10)
+
+%% Plots
+TA = simout.TA.Data;
+r = simout.r.Data;
+r_N = simout.r_N.Data;   
+r_B = simout.r_B.Data;
+S_N = simout.S_N.Data;   
+S_B = simout.S_B.Data;
+
+% True anomaly
+figure();
+plot(t, rad2deg(TA), 'LineWidth', 2);
+xlabel('t [s]');
+ylabel('$\theta$ [deg]', 'Interpreter', 'latex');
+title('True Anomaly');
+grid on;
+xlim([t(1), t(end)]);
+
+% Orbital radius
+figure();
+plot(t, r, 'LineWidth', 2);
+xlabel('t [s]');
+ylabel('r [km]');
+title('Orbital Radius');
+grid on;
+xlim([t(1), t(end)]);
+yline(a, '--r', 'Semi-major axis');
+
+% Position in inertial frame
+figure();
+subplot(3,1,1);
+plot(t, r_N(:,1), 'LineWidth', 2);
+ylabel('$r_N^x$ [km]', 'Interpreter', 'latex');
+grid on;
+title('Position in Inertial Frame [km]');
+subplot(3,1,2);
+plot(t, r_N(:,2), 'LineWidth', 2);
+ylabel('$r_N^y$ [km]', 'Interpreter', 'latex');
+grid on;
+subplot(3,1,3);
+plot(t, r_N(:,3), 'LineWidth', 2);
+ylabel('$r_N^z$ [km]', 'Interpreter', 'latex');
+xlabel('t [s]');
+grid on;
+
+% Position in body frame
+figure();
+subplot(3,1,1);
+plot(t, r_B(:,1), 'LineWidth', 2);
+ylabel('$r_B^x$ [km]', 'Interpreter', 'latex');
+grid on;
+title('Position in Body Frame [km]');
+subplot(3,1,2);
+plot(t, r_B(:,2), 'LineWidth', 2);
+ylabel('$r_B^y$ [km]', 'Interpreter', 'latex');
+grid on;
+subplot(3,1,3);
+plot(t, r_B(:,3), 'LineWidth', 2);
+ylabel('$r_B^z$ [km]', 'Interpreter', 'latex');
+xlabel('t [s]');
+grid on;
