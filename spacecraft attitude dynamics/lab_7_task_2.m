@@ -8,7 +8,7 @@ mu_E = astroConstants(13);
 ix = 0.070;
 iy = 0.055;
 iz = 0.025;
-I = diag([ ix iy iz ]);
+I = diag([ 100 25.1 91.6 ] * 10^-2); % kg m^2
 
 % position
 a = 7093; % SMA [km]
@@ -30,7 +30,7 @@ w0 = [0.45; 0.52; 0.55;];
 A_BN0 = eye(3);
 
 % SRP
-J_depl = diag([ 100 25.1 91.6 ] * 10^-2); % kg m^2
+% J_depl = diag([ 100 25.1 91.6 ] * 10^-2); % kg m^2
 F_e = 1358; % solar radiation intensity [W m^-2]
 c = 2.998e8; % speed of light [m s^-1]
 P = F_e / c;
@@ -133,7 +133,8 @@ A_BN = simout.A_BN.Data;
 % r_N = simout.r_N.Data;   
 % r_B = simout.r_B.Data;
 % S_N = simout.S_N.Data;   
-% S_B = simout.S_B.Data;
+S_B = simout.S_B.Data;
+S_B_hat = simout.S_B_hat.Data;
 % 
 % % True anomaly
 % figure();

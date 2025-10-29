@@ -26,7 +26,6 @@ e_sun = deg2rad(23.45); % eccentricity (sun) []
 % angular velocities
 w0 = [0.45; 0.52; 0.55;];
 
-
 % DCM
 A_BN0 = eye(3);
 
@@ -35,7 +34,7 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = "100"%num2str(T);
+sim_options.StopTime = "100";
 
 %% outputs
 disp("running sim")
