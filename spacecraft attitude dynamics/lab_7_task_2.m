@@ -64,7 +64,7 @@ area = [
     12
     12
     ] * 10^-2;
-r_F = [
+r_Fi = [
     [10 0 0] * 10^-2 % distances from body surface CoM to satellite CoM
     [0 10 0] * 10^-2
     [-10 0 0] * 10^-2
@@ -96,3 +96,4 @@ S_N = simout.S_N.Data;
 S_B = simout.S_B.Data;
 S_B_hat = simout.S_B_hat.Data;
 F_i = simout.F_i.Data;
+T_i = simout.T_i.Data;
