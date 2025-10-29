@@ -48,30 +48,10 @@ N_B = [ % FLIP THIS
     [1 0 0]
     [-1 0 0] % unknown / assumed to follow 3
     ];
-rho_s = [
-    [0 5] % body surface solar values "s"
-    [0 5]
-    [0 5]
-    [0 5]
-    [0 5]
-    [0 5]
-    [0 1] % solar panel surface solar values "s"
-    [0 1]
-    [0 1]
-    [0 1]
-    ];
-rho_d = [
-    [0 1] % body surface solar values "d"
-    [0 1]
-    [0 1]
-    [0 1]
-    [0 1]
-    [0 1]
-    [0 1] % solar panel surface solar values "d"
-    [0 1]
-    [0 1]
-    [0 1]
-    ];
+rho_s = [0.5 0.5 0.5 0.5 0.5 0.5 ... % body surface solar values "s"
+    0.1 0.1 0.1 0.1]; % solar panel surface solar values "s"
+rho_d = [0.1 0.1 0.1 0.1 0.1 0.1 ... % body surface solar values "d"
+    0.1 0.1 0.1 0.1]; % solar panel surface solar values "d"
 area = [
     6 % body surface areas [m^2]
     6
@@ -102,7 +82,7 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = "100";
+sim_options.StopTime = "10";
 
 %% outputs
 disp("running sim")
