@@ -8,14 +8,16 @@ R = (6371 + 400)*10^3;
 mu_E = astroConstants(13)*10^9;
 
 % inertia
-ix = 0.04;
-iy = 0.06;
+ix = 0.06;
+iy = 0.04;
 iz = 0.08;
 I = diag([ ix iy iz ]);
 
 % angular velocities
-wx0 = 0;
-wy0 = 0;
+wx0 = 10e-6;
+%wx0 = 0;
+wy0 = 10e-6;
+%wy0 = 0;
 
 n = sqrt(G*M_e/(R^3));
 wz0 = n;
@@ -32,12 +34,14 @@ c = [1; 0; 0;];
 % simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.05";
+sim_options.FixedStep = "0.1";
 sim_options.StartTime = "0";
-sim_options.StopTime = "5";
+sim_options.StopTime = "20000";
 
 %% outputs
+disp("running sim")
 simout = sim("lab_6_task_2_simulink", sim_options);
+disp("sim complete, gathering results")
 
 % time
 t = simout.tout;
@@ -59,7 +63,15 @@ wydot = wdot(:, 3);
 % DCM - body
 ABN = simout.ABN.Data;
 
-% DCM - desired
+% DCM - LVLH
+ALN = simout.ALN.Data;
+
+% DCM - error
+ABL = simout.ABL.Data;
+disp("results gathered")
+%animate_frame(ABN, t, "SpeedUp", str2num(sim_options.StopTime)/10)
+% figure("Name", "Error DCM")
+
 
 
 
