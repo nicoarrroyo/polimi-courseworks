@@ -2,24 +2,22 @@ clear; close all; clc;
 
 %% initial conditions
 % constants
-G = 6.67e-11;
-M_e = 5.97e24;
-R = (6371 + 400)*10^3;
-mu_E = astroConstants(13)*10^9;
+R = 6371 + 400; % orbit radius [km]
+mu = astroConstants(13); % earth gravitational parameter [km^3 kg^-1 s^-2]
 
 % inertia
-ix = 0.06;
-iy = 0.04;
+ix = 0.04;
+iy = 0.06;
 iz = 0.08;
 I = diag([ ix iy iz ]);
 
 % angular velocities
-wx0 = 10e-6;
+wx0 = 10^-6;
 %wx0 = 0;
-wy0 = 10e-6;
+wy0 = 10^-6;
 %wy0 = 0;
 
-n = sqrt(G*M_e/(R^3));
+n = sqrt(mu/(R^3));
 wz0 = n;
 w0 = [wx0 wy0 wz0];
 
