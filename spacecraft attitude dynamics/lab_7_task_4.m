@@ -51,29 +51,21 @@ rho_s = [0.5 0.5 0.5 0.5 0.5 0.5 ... % body surface solar values "s"
 rho_d = [0.1 0.1 0.1 0.1 0.1 0.1 ... % body surface solar values "d"
     0.1 0.1 0.1 0.1]; % solar panel surface solar values "d"
 area = [
-    6 % body surface areas [m^2]
-    6
-    6
-    6
-    4
-    4
-    12 % solar panel surface areas [m^2]
-    12
-    12
-    12
+    6; 6; 6; 6; 4; 4; ... % body surface areas [m^2]
+    12; 12; 12; 12; % solar panel surface areas [m^2]
     ] * 10^-2;
 r_Fi = [
-    [10 0 0] * 10^-2 % distances from body surface CoM to satellite CoM
-    [0 10 0] * 10^-2
-    [-10 0 0] * 10^-2
-    [0 -10 0] * 10^-2 % unknown / assumed to follow 3
-    [0 0 15] * 10^-2 % unknown / assumed to follow 6
-    [0 0 -15] * 10^-2
-    [0 45 0] * 10^-2 % distances from body surface CoM to satellite CoM
-    [0 45 0] * 10^-2
-    [0 -45 0] * 10^-2
-    [0 -45 0] * 10^-2
-    ];
+    [10 0 0] % distances from body surface CoM to satellite CoM
+    [0 10 0]
+    [-10 0 0]
+    [0 -10 0] % unknown / assumed to follow 3
+    [0 0 15] % unknown / assumed to follow 6
+    [0 0 -15]
+    [0 45 0] % distances from body surface CoM to satellite CoM
+    [0 45 0]
+    [0 -45 0]
+    [0 -45 0]
+    ] * 10^-2;
 
 % magnetism
 j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
@@ -81,10 +73,10 @@ g_10 = -29404.8; g_11 = -1450.9; h_11 = 4652.6; % DGRF order 1 coefficients
 
 % simulation options
 sim_options.SolverType = "Fixed-step";
-sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.1";
+sim_options.Solver = "ode5";
+sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = "100";
+sim_options.StopTime = "10";
 
 %% outputs
 disp("running sim")
@@ -102,6 +94,7 @@ F_i = simout.F_i.Data; % SRP force
 T_i = simout.T_i.Data; % SRP torque
 
 % magnetism M
-simout.b_N.Data; % 
-simout.M.Data; % magnetic torque
-
+% simout.b_N.Data; % 
+% simout.M.Data; % magnetic torque
+arhat = simout.rhat.Data;
+amhat = simout.mhat.Data;
