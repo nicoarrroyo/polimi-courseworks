@@ -91,6 +91,8 @@ disp("sim complete")
 
 % time
 t = simout.tout;
+ABL = simout.ABL.Data;
+%animate_frame(ABL, t);
 
 S_N = simout.S_N.Data;
 S_B = simout.S_B.Data;

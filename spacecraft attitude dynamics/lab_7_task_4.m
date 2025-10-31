@@ -94,8 +94,14 @@ disp("sim complete")
 % time
 t = simout.tout;
 
+% solar radiation pressure SRP
 S_N = simout.S_N.Data;
 S_B = simout.S_B.Data;
 S_B_hat = simout.S_B_hat.Data;
-F_i = simout.F_i.Data;
-T_i = simout.T_i.Data;
+F_i = simout.F_i.Data; % SRP force
+T_i = simout.T_i.Data; % SRP torque
+
+% magnetism M
+simout.b_N.Data; % 
+simout.M.Data; % magnetic torque
+
