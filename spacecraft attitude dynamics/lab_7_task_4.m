@@ -78,7 +78,7 @@ w_earth = 7.27 * 10^-5;
 % simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.01";
+sim_options.FixedStep = "0.1";
 sim_options.StartTime = "0";
 sim_options.StopTime = "100";
 
