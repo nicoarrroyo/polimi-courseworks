@@ -15,7 +15,6 @@ A_BN0 = eye(3);
 
 % keplerian parameters
 a = 7093; % SMA [km]
-%e = 0.5; % eccentricity [-]
 e = 0.00277; % eccentricity [-]
 TA0 = deg2rad(0); % initial true anomaly [rad]
 inc = deg2rad(98.27); % inclination [rad]
@@ -25,12 +24,11 @@ n = sqrt(mu/(a^3)); % average rotational rate
 T = 2*pi / n; % period [s]
 
 % sun
-n_sun = 2*pi / (60*60*24*365); % average rotational rate (sun)
+n_sun = 2*pi / (60*60*24*365.25); % average rotational rate (sun)
 r_sun = 1.496e8;
 e_sun = deg2rad(23.45); % eccentricity (sun) []
 
 % SRP
-% J_depl = diag([ 100 25.1 91.6 ] * 10^-2); % kg m^2
 F_e = 1358; % solar radiation intensity [W m^-2]
 c = 2.998e8; % speed of light [m s^-1]
 P = F_e / c;
@@ -76,6 +74,10 @@ r_Fi = [
     [0 -45 0] * 10^-2
     [0 -45 0] * 10^-2
     ];
+
+% magnetism
+j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
+g_10 = -29404.8; g_11 = -1450.9; h_11 = 4652.6; % DGRF order 1 coefficients
 
 % simulation options
 sim_options.SolverType = "Fixed-step";
