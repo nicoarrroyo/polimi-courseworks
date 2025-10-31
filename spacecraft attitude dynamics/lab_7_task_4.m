@@ -20,13 +20,13 @@ TA0 = deg2rad(0); % initial true anomaly [rad]
 inc = deg2rad(98.27); % inclination [rad]
 
 mu = astroConstants(13); % earth gravitational parameter [km^3 kg^-1 s^-2]
-n = sqrt(mu/(a^3)); % average rotational rate
+n = sqrt(mu/(a^3)); % average rotational rate [rad s^-1]
 T = 2*pi / n; % period [s]
 
 % sun
-n_sun = 2*pi / (60*60*24*365.25); % average rotational rate (sun)
-r_sun = 1.496e8;
-e_sun = deg2rad(23.45); % eccentricity (sun) []
+n_sun = 2*pi / (60*60*24*365.25); % average rotation rate (sun) [rad s^-1]
+r_sun = 1.496e8; % earth orbit radius (sun) [km]
+e_sun = deg2rad(23.45); % eccentricity (sun) [-]
 
 % SRP
 F_e = 1358; % solar radiation intensity [W m^-2]
@@ -69,14 +69,18 @@ r_Fi = [
 
 % magnetism
 j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
-g_10 = -29404.8; g_11 = -1450.9; h_11 = 4652.6; % DGRF order 1 coefficients
+g_10 = -29404.8; % DGRF order 1 coefficients [nano tesla]
+g_11 = -1450.9;
+h_11 = 4652.5;
+R_earth = 6378;
+w_earth = 7.27 * 10^-5;
 
 % simulation options
 sim_options.SolverType = "Fixed-step";
-sim_options.Solver = "ode5";
+sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = "10";
+sim_options.StopTime = "100";
 
 %% outputs
 disp("running sim")
@@ -86,15 +90,16 @@ disp("sim complete")
 % time
 t = simout.tout;
 
+% gravity gradient GG
+T_GG = simout.T_GG.Data;
+
 % solar radiation pressure SRP
 S_N = simout.S_N.Data;
 S_B = simout.S_B.Data;
 S_B_hat = simout.S_B_hat.Data;
 F_i = simout.F_i.Data; % SRP force
-T_i = simout.T_i.Data; % SRP torque
+T_SRP = simout.T_i.Data; % SRP torque
 
 % magnetism M
-% simout.b_N.Data; % 
-% simout.M.Data; % magnetic torque
-arhat = simout.rhat.Data;
-amhat = simout.mhat.Data;
+b_N = simout.b_N.Data; % inertial magnetic flux density
+T_M = simout.T_M.Data; % magnetic torque
