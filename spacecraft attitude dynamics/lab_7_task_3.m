@@ -94,8 +94,10 @@ t = simout.tout;
 ABL = simout.ABL.Data;
 %animate_frame(ABL, t);
 
+% solar radiation pressure SRP
 S_N = simout.S_N.Data;
 S_B = simout.S_B.Data;
 S_B_hat = simout.S_B_hat.Data;
-F_i = simout.F_i.Data;
-T_i = simout.T_i.Data;
+F_i = simout.F_i.Data; % SRP force
+T_i = simout.T_i.Data; % SRP torque on each face
+T_SRP = simout.T_SRP.Data; % SRP torque in each dimension (x y z)
