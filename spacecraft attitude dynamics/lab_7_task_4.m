@@ -19,7 +19,9 @@ e = 0.00277; % eccentricity [-]
 TA0 = deg2rad(0); % initial true anomaly [rad]
 inc = deg2rad(98.27); % inclination [rad]
 
-mu = astroConstants(13); % earth gravitational parameter [km^3 kg^-1 s^-2]
+M_E = 5.9722 * 10^24; % earth mass [kg]
+G_E = 6.67 * 10^-11 * 10^-9; % gravitational constant [km^3 kg^-1 s^-2]
+mu = M_E * G_E; % earth gravitational parameter [km^3 s^-2]
 n = sqrt(mu/(a^3)); % average rotational rate [rad s^-1]
 T = 2*pi / n; % period [s]
 
