@@ -17,7 +17,7 @@ A_BN0 = eye(3);
 a = 7093; % SMA [km]
 e = 0.00277; % eccentricity [-]
 TA0 = deg2rad(0); % initial true anomaly [rad]
-inc = deg2rad(98.27); % inclination [rad]
+inc = deg2rad(20); % inclination [rad]
 
 M_E = 5.9722 * 10^24; % earth mass [kg]
 G_E = 6.67 * 10^-11 * 10^-9; % gravitational constant [km^3 kg^-1 s^-2]
