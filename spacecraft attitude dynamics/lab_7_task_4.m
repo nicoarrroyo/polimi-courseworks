@@ -30,7 +30,7 @@ e_sun = deg2rad(23.45); % eccentricity (sun) [-]
 
 % SRP
 F_e = 1358; % solar radiation intensity [W m^-2]
-c = 2.998e8; % speed of light [m s^-1]
+c = 2.998 * 10^8; % speed of light [m s^-1]
 P = F_e / c;
 
 % physical satellite properties
@@ -80,7 +80,7 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.1";
 sim_options.StartTime = "0";
-sim_options.StopTime = "100";
+sim_options.StopTime = "10";
 
 %% outputs
 disp("running sim")
@@ -103,3 +103,6 @@ T_SRP = simout.T_i.Data; % SRP torque
 % magnetism M
 b_N = simout.b_N.Data; % inertial magnetic flux density
 T_M = simout.T_M.Data; % magnetic torque
+
+% total
+T_tot = simout.T_tot.Data; % total torque
