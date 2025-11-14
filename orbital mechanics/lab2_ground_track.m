@@ -1,4 +1,4 @@
-function lab2_func( r0, v0, orbits, plot_title )
+function lab2_ground_track( r0, v0, orbits, plot_title )
 %% constants / initial conditions
 w_E = 15.04; % earth rotation velocity [deg hr^-1]
 mu_E = astroConstants(13); % earth gravitational parameter [km^3 s^-2]
