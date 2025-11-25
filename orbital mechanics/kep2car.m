@@ -1,4 +1,4 @@
-function [r0, v0] = kep2car( a, e, i, Omega, omega, TA)
+function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu )
     % ----- INPUTS -----
     % a: semi-major axis
     % e: eccentricity vector
@@ -14,9 +14,12 @@ function [r0, v0] = kep2car( a, e, i, Omega, omega, TA)
     % -------------------
     
     %% initial constants
+    if nargin < 7
+        mu = 398600;
+    end
     p = a * (1 - e^2);
     r = p / (1 + e * cosd(TA));
-    h = cross(r, v);
+    h = sqrt(mu * p);
     
     %% keplerian to perifocal (eph)
     % radius
@@ -48,6 +51,6 @@ function [r0, v0] = kep2car( a, e, i, Omega, omega, TA)
                 sind(Omega) cosd(Omega) 0;
                 0 0 1];
     
-    r0 = R3_omega * R1_i * R3_Omega * r_eph;
-    v0 = R3_omega * R1_i * R3_Omega * v_eph;
+    r0 = R3_Omega * R1_i * R3_omega * r_eph;
+    v0 = R3_Omega * R1_i * R3_omega * v_eph;
 end
