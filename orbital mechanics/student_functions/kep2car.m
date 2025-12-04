@@ -1,7 +1,7 @@
 function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu )
     % ----- INPUTS -----
     % a: semi-major axis
-    % e: eccentricity vector
+    % e: eccentricity scalar
     % i: inclination
     % RAAN: right ascension of ascending node
     % w (small omega): argument of perigee
@@ -54,4 +54,3 @@ function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu )
     r0 = R3_Omega * R1_i * R3_omega * r_eph;
     v0 = R3_Omega * R1_i * R3_omega * v_eph;
 end
-
