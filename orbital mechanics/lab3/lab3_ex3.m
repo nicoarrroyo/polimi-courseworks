@@ -28,6 +28,7 @@ arrive_times = linspace(early_arrive_mjd2000, late_arrive_mjd2000, steps);
 
 dvtot = zeros(length(depart_times), length(arrive_times));
 
+tic
 for i = 1:length(depart_times)
     for j = 1:length(arrive_times)
         dvtot(i, j) = transfer_cost(...
@@ -36,3 +37,6 @@ for i = 1:length(depart_times)
     fprintf("completed %.0f / %.0f departure calculations\n", ...
         i, length(depart_times))
 end
+toc
+
+%% 3. Draw the porkchop plot of the Mars Express Mission
