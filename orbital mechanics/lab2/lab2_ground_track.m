@@ -1,4 +1,9 @@
 function lab2_ground_track( r0, v0, orbits, plot_title )
+%% configure paths
+script_path = fileparts(mfilename("fullpath"));
+backs = strfind(script_path, "\"); labs_dir = script_path(1:backs(end));
+addpath([labs_dir '\student_functions']); addpath([labs_dir '\lib']);
+
 %% constants / initial conditions
 w_E = 15.04; % earth rotation velocity [deg hr^-1]
 mu_E = astroConstants(13); % earth gravitational parameter [km^3 s^-2]
@@ -22,6 +27,8 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 %% ground track calculation and plotting
 % calculation
 [long, lat] = ground_track(Y, T, w_E); % longitude and latitude [radians]
+fprintf("FINAL LONGITUDE: %.4f rad, %.2f deg\n", long(end), rad2deg(long(end)));
+fprintf("FINAL LATITUDE:  %.4f rad, %.2f deg\n", lat(end), rad2deg(lat(end)));
 
 % plotting
 figure("Name", plot_title)
