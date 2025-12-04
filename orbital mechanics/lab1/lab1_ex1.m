@@ -1,3 +1,7 @@
+%% configure paths
+script_path = fileparts(mfilename("fullpath"));
+backs = strfind(script_path, "\"); labs_dir = script_path(1:backs(end));
+addpath([labs_dir '\student_functions']); addpath([labs_dir '\lib']);
 clear; close all; clc;
 
 %% Exercise 1 - 2-Body Problem
