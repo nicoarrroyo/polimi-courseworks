@@ -14,7 +14,7 @@ early_arrive_mjd2000 = date2mjd2000([2026, 01, 01, 0, 00, 00]);
 late_depart_mjd2000 = date2mjd2000([2031, 01, 01, 0, 00, 00]);
 late_arrive_mjd2000 = date2mjd2000([2032, 03, 01, 0, 00, 00]);
 
-steps = 2000;
+steps = 200;
 depart_times = linspace(early_depart_mjd2000, late_depart_mjd2000, steps);
 arrive_times = linspace(early_arrive_mjd2000, late_arrive_mjd2000, steps);
 
@@ -87,7 +87,7 @@ disp("computing constrained transfer cost")
 tic
 for i = 1:length(depart_times)
     for j = 1:length(arrive_times)
-        if depart_times(i) - arrive_times(j) > 30
+        if arrive_times(j) < depart_times(i)
             continue
         end
         [dv1(i, j), dv2(i, j)] = constrained_transfer_cost(...
