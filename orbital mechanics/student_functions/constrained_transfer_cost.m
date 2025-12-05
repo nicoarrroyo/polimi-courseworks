@@ -1,8 +1,9 @@
-function dv_total = transfer_cost(...
+function [dv1, dv2] = constrained_transfer_cost(...
     mjd2000_departure, ...
     mjd2000_arrival, ...
     body_id1, ...
-    body_id2)
+    body_id2, ...
+    dv_launch_constraint)
 % TRANSFER_COST Calculate total delta-v for interplanetary transfer
 %
 %   dv_total = TRANSFER_COST(mjd2000_departure, mjd2000_arrival, body_id1, body_id2)
@@ -39,12 +40,11 @@ function dv_total = transfer_cost(...
         lambertMR(r1, r2, tof, mu_sun, 0, 0, 0, 0);
 
     % Calculate delta-v maneuvers
-    if ERROR == 0
-        dv1 = norm(v_transfer1 - v1);
-        dv2 = norm(v_transfer2 - v2);
-        dv_total = dv1 + dv2;
+    dv1 = abs(norm(v_transfer1 - v1));
+    if ERROR == 0 && abs(dv1) < abs(dv_launch_constraint)
+        dv2 = abs(norm(v_transfer2 - v2));
     else
-        dv_total = NaN;
+       dv1 = NaN; dv2 = NaN;
     end
 end
 

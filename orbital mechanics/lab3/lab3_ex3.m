@@ -26,8 +26,8 @@ steps = 100;
 depart_times = linspace(early_depart_mjd2000, late_depart_mjd2000, steps);
 arrive_times = linspace(early_arrive_mjd2000, late_arrive_mjd2000, steps);
 
-dvtot = zeros(length(depart_times), length(arrive_times));
-tof_days = zeros(length(depart_times), length(arrive_times));
+dvtot = NaN(length(depart_times), length(arrive_times));
+tof_days = NaN(length(depart_times), length(arrive_times));
 
 for i = 1:length(depart_times)
     for j = 1:length(arrive_times)

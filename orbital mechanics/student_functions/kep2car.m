@@ -1,4 +1,4 @@
-function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu )
+function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu, angle )
     % ----- INPUTS -----
     % a: semi-major axis
     % e: eccentricity scalar
@@ -17,6 +17,18 @@ function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu )
     if nargin < 7
         mu = 398600;
     end
+    if nargin < 8
+        angle = "degrees";
+    end
+    % Convert angles to degrees if necessary
+    if angle == "radians"
+        i = rad2deg(i);
+        Omega = rad2deg(Omega);
+        omega = rad2deg(omega);
+        TA = rad2deg(TA);
+    end
+
+
     p = a * (1 - e^2);
     r = p / (1 + e * cosd(TA));
     h = sqrt(mu * p);

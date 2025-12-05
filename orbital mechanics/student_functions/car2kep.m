@@ -1,7 +1,8 @@
-function [a, e, i, Omega, omega, TA] = car2kep( r, v )
+function [a, e, i, Omega, omega, TA] = car2kep( r, v, mu )
     % ----- INPUTS -----
     % r0: cartesian position vector
     % v0: cartesian velocity vector
+    % mu: gravitational parameter
     % ------------------
 
     % ----- OUTPUTS -----
@@ -12,6 +13,9 @@ function [a, e, i, Omega, omega, TA] = car2kep( r, v )
     % w (small omega): argument of perigee
     % TA: true anomaly
     % -------------------
+    if nargin < 3
+        mu = astroConstants(13); % earth gravitational parameter
+    end
 
     % 1. Calculate magnitudes
     r_mag = norm(r);
@@ -30,7 +34,6 @@ function [a, e, i, Omega, omega, TA] = car2kep( r, v )
 
     % 4. Eccentricity Vector (e)
     % Eq 1.21: e = (v x h)/mu - r/r 
-    mu = 398600;
     e_vec = (cross(v, h_vec) / mu) - (r / r_mag);
     e = norm(e_vec);
 

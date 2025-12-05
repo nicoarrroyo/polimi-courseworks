@@ -17,6 +17,14 @@ clear; close all; clc;
 %% 2. Evaluate Δ𝑣tot for a grid of departure and arrival times covering ...
 % the time windows provided.
 
+% Departure: 2003 April 1 - 2003 August 1
+date_dep_min = [2003, 4, 1, 0, 0, 0];
+date_dep_max = [2003, 8, 1, 0, 0, 0];
+
+% Arrival: 2003 September 1 - 2004 March 1
+date_arr_min = [2003, 9, 1, 0, 0, 0];
+date_arr_max = [2004, 3, 1, 0, 0, 0];
+
 date_dep_mjd2000 = date2mjd2000([2003, 06, 07, 22, 27, 34.14]);
 date_arr_mjd2000 = date2mjd2000([2003, 12, 28, 14, 26, 08.25]);
 
