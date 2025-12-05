@@ -171,6 +171,9 @@ scatter3(R_earth(end, 1), R_earth(end, 2), R_earth(end, 3), "MarkerFaceColor", "
 scatter3(R_mars(1, 1), R_mars(1, 2), R_mars(1, 3), "filled", "MarkerFaceColor", "r");
 scatter3(R_mars(end, 1), R_mars(end, 2), R_mars(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
 
+% g. sun position
+scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
+
 % plot properties
 xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
 title("Two-body problem orbit");
@@ -182,7 +185,8 @@ legend(...
     "earth at departure", ...
     "earth at arrival", ...
     "mars at arrival", ...
-    "mars at departure");
+    "mars at departure", ...
+    "");
 axis equal; grid on;
 hold off;
 
