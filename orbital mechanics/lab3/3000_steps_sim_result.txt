@@ -1,0 +1,23 @@
+computing unconstrained transfer cost
+complete
+Elapsed time is 62.751455 seconds.
+
+=== UNCONSTRAINED GRID SEARCH RESULTS ===
+Min Delta V: 5.6083 km s^-1
+Departure:   MJD2000 9799.32
+             Date    2026 10 30 19 39 45.20
+Arrival:     MJD2000 10110.01
+             Date    2027 9 6 12 11 17.03
+Total ToF (days):    310.69
+computing constrained transfer cost
+complete
+Elapsed time is 63.137810 seconds.
+
+=== CONSTRAINED GRID SEARCH RESULTS ===
+Min Delta V: 5.6083 km s^-1
+Departure:   MJD2000 9799.32
+             Date    2026 10 30 19 39 45.20
+Arrival:     MJD2000 10110.01
+             Date    2027 9 6 12 11 17.03
+Total ToF (days):    310.69
+>> 
