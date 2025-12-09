@@ -1,20 +1,20 @@
 clear; close all; clc;
 
-%% initialisation
 % inertia
-ix = 25;
-iy = 35;
-iz = 50;
+ix = 19.5;
+iy = 19;
+iz = 12.6;
 I = diag([ ix iy iz ]); % kg m^2
 
 % DCM
 A_BN0 = eye(3);
 
-% kepler
-a = 7093; % SMA [km]
-e = 0.00277; % eccentricity [-]
+%% orbit parameters
+% keplerian parameters
+a = 630 + 6378; % SMA [km]
+e = 0; % eccentricity [-]
 TA0 = deg2rad(0); % initial true anomaly [rad]
-inc = deg2rad(20); % inclination [rad]
+inc = deg2rad(97.9); % inclination [rad]
 
 % orbiting celestial body (earth)
 M_E = 5.9722 * 10^24; % earth mass [kg]
@@ -24,8 +24,9 @@ n = sqrt(mu/(a^3)); % average rotational rate [rad s^-1]
 T = 2*pi / n; % period [s]
 
 % angular velocities
-w0 = [1e-6; 1e-6; n;];
+w0 = [10^-6; 10^-6; n;]; % rad s^-1
 
+%% disturbances
 % sun
 n_sun = 2*pi / (60*60*24*365.25); % average rotation rate (sun) [rad s^-1]
 r_sun = 1.496e8; % earth orbit radius (sun) [km]
@@ -37,44 +38,45 @@ c = 2.998 * 10^8; % speed of light [m s^-1]
 P = F_e / c;
 
 % physical satellite properties
-N_B = [
-    [1 0 0] % body surface normal vectors
+N_B = [ % body surface normal vectors
+    [1 0 0]
     [0 1 0]
     [-1 0 0]
-    [0 -1 0] % unknown / assumed to follow 3
-    [0 0 1] % unknown / assumed to follow 6
+    [0 -1 0]
+    [0 0 1]
     [0 0 -1]
-    [1 0 0] % solar panel surface normal vectors
-    [-1 0 0]
-    [1 0 0]
-    [-1 0 0] % unknown / assumed to follow 3
     ];
-rho_s = [0.5 0.5 0.5 0.5 0.5 0.5 ... % body surface solar values "s"
-    0.1 0.1 0.1 0.1]; % solar panel surface solar values "s"
-rho_d = [0.1 0.1 0.1 0.1 0.1 0.1 ... % body surface solar values "d"
-    0.1 0.1 0.1 0.1]; % solar panel surface solar values "d"
-area = [
-    6; 6; 6; 6; 4; 4; ... % body surface areas [m^2]
-    12; 12; 12; 12; % solar panel surface areas [m^2]
-    ] * 10^-2;
-r_Fi = [
-    [10 0 0] % distances from body surface CoM to satellite CoM
-    [0 10 0]
-    [-10 0 0]
-    [0 -10 0] % unknown / assumed to follow 3
-    [0 0 15] % unknown / assumed to follow 6
-    [0 0 -15]
-    [0 45 0] % distances from body surface CoM to satellite CoM
-    [0 45 0]
-    [0 -45 0]
-    [0 -45 0]
-    ] * 10^-2;
+rho_s = [0.1 0.5 0.1 0.5 0.5 0.1]; % body surface solar values "s"
+rho_d = [0.1 0.1 0.1 0.1 0.1 0.1]; % body surface solar values "d"
+area = [ % body surface areas [m^2]
+    1.08; 0.96; -1.08; -0.96; 0.72; -0.72;
+    ] * 10^-2; % calculated from dimensions 0.8 m x 0.9 m x 1.2 m
+r_Fi = [ % distances from body surface CoM to satellite CoM
+    [120/2 0 0]
+    [0 90/2 0]
+    [-120/2 0 0]
+    [0 -90 0]
+    [0 0 80/2]
+    [0 0 -80/2]
+    ] * 10^-2; % assumes CoM is in the geometric centre of the satellite
 
 % magnetism
 j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
 g_10 = -29404.8; % DGRF order 1 coefficients [nano tesla nT]
 g_11 = -1450.9;
 h_11 = 4652.5;
+g_20 = -2499.6; % DGRF order 2 coefficients
+g_21 = 2982.0;
+g_22 = 1677.0;
+h_21 = -2991.6;
+h_22 = -734.6;
+g_30 = 1363.2; % DGRF order 3 coefficients
+g_31 = -2381.2;
+g_32 = 1236.2;
+g_33 = 525.7;
+h_31 = -82.1;
+h_32 = 241.9;
+h_33 = -543.4;
 R_earth = 6378;
 w_earth = 7.27 * 10^-5;
 
@@ -110,12 +112,22 @@ fprintf("Estimated T_max (SRP):  %.2e Nm\n", max_SRP);
 fprintf("Estimated T_max (M):    %.2e Nm\n", max_M);
 fprintf("Estimated T_max (aero): %.2e Nm\n", max_aero);
 
+%% sensors
+% gyroscope (STIM210 Multi-Axis Gyro Module)
+gyro_arw = 0.15; % angular random walk [deg s^-1 hr^(-1/2)]
+gyro_arw = deg2rad(gyro_arw) / sqrt(3600); % [rad s^-1]
+
+gyro_bias = 0.4; % static bias (bias instability) [deg hr^-1]
+gyro_bias = deg2rad(gyro_bias) / 3600; % [rad s^-1]
+
+gyro_misalignment = 1 * 10^-3; % misalignment (pg5) [rad]
+
 % simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.1";
 sim_options.StartTime = "0";
-sim_options.StopTime = "10";
+sim_options.StopTime = num2str(round(T, 0));
 
 %% outputs
 disp("running sim")
@@ -139,5 +151,3 @@ T_SRP = simout.T_i.Data; % SRP torque
 b_N = simout.b_N.Data; % inertial magnetic flux density
 T_M = simout.T_M.Data; % magnetic torque
 
-% total
-T_tot = simout.T_tot.Data; % total torque
