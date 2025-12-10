@@ -88,29 +88,29 @@ sens_m_O = [1,      sens_m_eps_xy, sens_m_eps_xz;
      sens_m_eps_xy, 1,      sens_m_eps_yz;
      sens_m_eps_xz, sens_m_eps_yz, 1];
 
-% % dimensions
-% sens_m_m=0.052;                  % [kg] mass of the gyroscope
-% sens_m_length=44.8;              % [mm] 
-% sens_m_height=38.6;              % [mm]
-% sens_m_depth=21.5;               % [mm]
-% 
-% % datasheet values
-% sens_m_mis_err=1/1000;           % misalignment error [mrad]
-% sens_m_run_run_bias=4/3600;      % bias due to sensor turn on [deg s^-1]
-% sens_m_static_temp_bias=9/3600;  % bias due to static temperature [deg s^-1]
-% sens_m_SFE = 500*1e-6;           % scale factor [-]
-% sens_m_SFN = 15*1e-6;            % non linearity scale factor [-]
-% sens_m_update_rate = 100;        % [Hz]
-% sens_m_Ts= 1/sens_m_update_rate;        % sampling time [s]
-% sens_m_D_bias_inst=0.3/3600;     % bias instability [deg s^-1]
-% sens_m_D_ARW=0.15/sqrt(3600);    % angle random walk [deg s^-1/2]
-% sens_m_RRW=1e-3;                 % rate random walk GUESS
-% sens_m_D_RW=sens_m_RRW/sqrt(3600);      % [deg s^-1]
-% sens_m_D_wn = sens_m_D_ARW/sqrt(3600);  % Amplitude of white noise 
-% sens_m_c_time=200;               % [s]
-% sens_m_FS=10;                    % full scale [V]
-% sens_m_nbits=24;                 % [-] # bits
-% sens_m_LSB=sens_m_FS/(2*exp(sens_m_nbits));    % Least significant bit
+% dimensions
+sens_m_m      = 0.007; % mass [kg]
+% sens_m_length = 44.8;  % length [mm] 
+% sens_m_height = 38.6;  % height [mm]
+% sens_m_depth  = 21.5;  % width [mm]
+
+% datasheet values
+% sens_m_mis_err          = 1 / 1000;                  % misalignment error [mrad]
+% sens_m_run_run_bias     = 4 / 3600;                  % "sensor turn on" bias [deg s^-1]
+% sens_m_static_temp_bias = 9 / 3600;                  % "static temperature" bias [deg s^-1]
+sens_m_SFE              = 4885 * 10^-6;                % scale factor [-] from slide 7 lec 14
+% sens_m_SFN              = 15 * 1e-6;                 % non linearity scale factor [-]
+% sens_m_update_rate      = 100;                       % [Hz]
+% sens_m_Ts               = 1 / sens_m_update_rate;    % sampling time [s]
+% sens_m_D_bias_inst      = 0.3 / 3600;                % bias instability [deg s^-1]
+% sens_m_D_ARW            = 0.15 / sqrt(3600);         % angle random walk [deg s^-1/2]
+% sens_m_RRW              = 1e-3;                      % rate random walk
+% sens_m_D_RW             = sens_m_RRW / sqrt(3600);   % [deg s^-1]
+% sens_m_D_wn             = sens_m_D_ARW / sqrt(3600); % Amplitude of white noise 
+% sens_m_c_time           = 200;                       % [s]
+% sens_m_FS               = 10;                        % full scale [V]
+% sens_m_nbits            = 24;                        % [-] # bits
+% sens_m_LSB = sens_m_FS / (2 * exp(sens_m_nbits));    % Least significant bit
 
 %% sensors - earth horizon
 % misalignment matrix
@@ -154,6 +154,12 @@ sens_eh_update_rate      = 2;                          % [Hz]
 % sens_eh_FS               = 10;                         % full scale [V]
 % sens_eh_nbits            = 24;                         % [-] # bits
 % sens_eh_LSB = sens_eh_FS / (2 * exp(sens_eh_nbits));   % Least significant bit
+
+%% sensors - sun
+T_sun = 60 * 60 * 24 * 365.25;      % solar orbit period [s]
+n_sun = 2*pi / T_sun;               % solar average rotation rate [rad s^-1]
+R_sun = 1.496e8;                    % solar orbit radius [km]
+e_sun = deg2rad(23.45);             % solar eccentricity [-]
 
 %% disturbances - magnetism
 j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
