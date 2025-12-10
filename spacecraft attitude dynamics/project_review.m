@@ -1,32 +1,75 @@
 clear; close all; clc;
 
+%% satellite parameters
 % inertia
-ix = 19.5;
-iy = 19;
-iz = 12.6;
-I = diag([ ix iy iz ]); % kg m^2
+ix = 25;                          % [kg m^2]
+iy = 35;                          % [kg m^2]
+iz = 50;                          % [kg m^2]
+I = diag([ix iy iz]);             % [kg m^2]
 
 % DCM
 A_BN0 = eye(3);
 
 %% orbit parameters
-% keplerian parameters
-a = 630 + 6378; % SMA [km]
-e = 0; % eccentricity [-]
-TA0 = deg2rad(0); % initial true anomaly [rad]
-inc = deg2rad(97.9); % inclination [rad]
+% Keplerian parameters
+a = 7000;                         % SMA [km]
+e = 0.001;                        % eccentricity [-]
+inc = deg2rad(20);                % inclination [rad]
+TA0 = 0;                          % initial true anomaly [rad]
 
-% orbiting celestial body (earth)
-M_E = 5.9722 * 10^24; % earth mass [kg]
-G_E = 6.67 * 10^-11 * 10^-9; % gravitational constant [km^3 kg^-1 s^-2]
-mu = M_E * G_E; % earth gravitational parameter [km^3 s^-2]
-n = sqrt(mu/(a^3)); % average rotational rate [rad s^-1]
-T = 2*pi / n; % period [s]
+M_E = 5.97e24;                    % earth mass [kg]
+G_E = 6.67e-20;                   % gravitational constant [km^3 kg^-1 s-^2]
+mu_E = G_E*M_E;                   % earth gravitational parameter [km^3 s^-2]
+R_E = 6378;                       % earth radius [km]
+w_E = 7.27 * 10^-5;               % earth rotation rate [rad s^-1]
+n = sqrt(mu_E/(a^3));             % mean rotational rate [rad s^-1]
+T = 2*pi / n;                     % orbital period [s]
 
 % angular velocities
 w0 = [10^-6; 10^-6; n;]; % rad s^-1
 
-%% disturbances
+%% sensors - gyroscope
+% Initial misalignment angles
+theta_eps_x=1e-6;                 % [rad]
+theta_eps_y=1e-6;                 % [rad]
+theta_eps_z=1e-6;                 % [rad]
+
+theta_eps=[0,            -theta_eps_z,  theta_eps_y;
+           theta_eps_z,  0,             -theta_eps_x;
+           -theta_eps_y, theta_eps_x,    0];
+
+% Non-Orthogonality matrix
+eps_xy = 1e-6;  
+eps_xz = 1e-6; 
+eps_yz = 1e-6;  
+O = [1,      eps_xy, eps_xz;
+     eps_xy, 1,      eps_yz;
+     eps_xz, eps_yz, 1];
+
+% Data (from data sheet)
+m=0.052;                  % [kg] mass of the gyroscope
+length=44.8;              % [mm] 
+height=38.6;              % [mm]
+deep=21.5;                % [mm]
+
+mis_err=1/1000;           % misalignment error [mrad]
+run_run_bias=4/3600;      % bias due to sensor turn on [deg s^-1]
+static_temp_bias=9/3600;  % bias due to static temperature [deg s^-1]
+SFE = 500*1e-6;           % scale factor [-]
+SFN = 15*1e-6;            % non linearity scale factor [-]
+update_rate = 100;        % [Hz]
+Ts= 1/update_rate;        % sampling time [s]
+D_bias_inst=0.3/3600;     % bias instability [deg s^-1]
+D_ARW=0.15/sqrt(3600);    % angle random walk [deg s^-1/2]
+RRW=1e-3;                 % rate random walk GUESS
+D_RW=RRW/sqrt(3600);      % [deg s^-1]
+D_wn = D_ARW/sqrt(3600);  % Amplitude of white noise 
+c_time=200;               % [s]
+FS=10;                    % full scale [V]
+nbits=24;                 % [-] # bits
+LSB=FS/(2*exp(nbits));    % Least significant bit
+
+%% disturbances - SRP
 % sun
 n_sun = 2*pi / (60*60*24*365.25); % average rotation rate (sun) [rad s^-1]
 r_sun = 1.496e8; % earth orbit radius (sun) [km]
@@ -60,7 +103,7 @@ r_Fi = [ % distances from body surface CoM to satellite CoM
     [0 0 -80/2]
     ] * 10^-2; % assumes CoM is in the geometric centre of the satellite
 
-% magnetism
+%% disturbances - magnetism
 j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
 g_10 = -29404.8; % DGRF order 1 coefficients [nano tesla nT]
 g_11 = -1450.9;
@@ -77,9 +120,15 @@ g_33 = 525.7;
 h_31 = -82.1;
 h_32 = 241.9;
 h_33 = -543.4;
-R_earth = 6378;
-w_earth = 7.27 * 10^-5;
 
+%% disturbances - magnetism order 5
+% we chose order 5 because order 6 had less than a 1% difference in total 
+% magnitude of the magnetic field vector (see mag_order_pathfinder.m)
+lat = 45.4685; % current dummy latitude (over milan) [deg]
+long = 9.1824; % current dummy longitude (over milan) [deg]
+B_LVLH = get_mag_order_5(R_E, a, lat, long);
+
+%% disturbance estimates
 % gravity gradient estimate
 I_M = max(max(I)); % maximum inertia moment
 I_m = min(max(I)); % minimum inertia moment
@@ -94,7 +143,7 @@ max_SRP = P * max(area) * (1 + q) * (max_arm);
 % magnetic torque estimate
 H_0 = sqrt(g_10^2 + g_11^2 + h_11^2);
 r_p = a * (1 - e);
-B_max = (2 * (R_earth^3) * H_0) / (r_p^3) * 10^-9;
+B_max = (2 * (R_E^3) * H_0) / (r_p^3) * 10^-9;
 max_M = norm(j) * B_max;
 
 % aerodynamic torque estimate
@@ -102,7 +151,7 @@ rho = 2.82e-14; % [kg/m^3] - ESTIMATE at 700km
 C_D = 2.2; % [-] ASSUMPTION for LEO
 A_s = 6 * 10^-2; % [m^2] - ASSUMPTION
 lever_arm = 0.05; % 5 cm offset - ASSUMPTION
-V = sqrt((mu * 10^9) / a * 10^3); % [m/s]
+V = sqrt((mu_E * 10^9) / a * 10^3); % [m/s]
 max_drag = 0.5 * rho * V^2 * A_s * C_D; % [N]
 max_aero = max_drag * lever_arm;
 
@@ -112,22 +161,12 @@ fprintf("Estimated T_max (SRP):  %.2e Nm\n", max_SRP);
 fprintf("Estimated T_max (M):    %.2e Nm\n", max_M);
 fprintf("Estimated T_max (aero): %.2e Nm\n", max_aero);
 
-%% sensors
-% gyroscope (STIM210 Multi-Axis Gyro Module)
-gyro_arw = 0.15; % angular random walk [deg s^-1 hr^(-1/2)]
-gyro_arw = deg2rad(gyro_arw) / sqrt(3600); % [rad s^-1]
-
-gyro_bias = 0.4; % static bias (bias instability) [deg hr^-1]
-gyro_bias = deg2rad(gyro_bias) / 3600; % [rad s^-1]
-
-gyro_misalignment = 1 * 10^-3; % misalignment (pg5) [rad]
-
 % simulation options
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.1";
+sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = num2str(round(T, 0));
+sim_options.StopTime = num2str(round(T/5, 0));
 
 %% outputs
 disp("running sim")
