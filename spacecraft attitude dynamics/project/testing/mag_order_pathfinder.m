@@ -80,7 +80,7 @@ for i = 1:order_of_model
     Bp = 0; % B_phi
     
     % Pre-calculate derivative step for P_nm
-    d_theta = 1e-5; 
+    d_theta = 1e-5;
     theta_plus = theta + d_theta;
     
     for n = 1:max_order
