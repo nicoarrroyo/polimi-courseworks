@@ -57,98 +57,78 @@ V_E = sqrt(mu_sun / R_E)'; % earth heliocentric velocity [km s^-1]
 % --- plot details ---
 earth_img = imread("EarthTexture.jpg");
 [x_earth, y_earth, z_earth] = sphere(50); r_E = astroConstants(23);
-x_earth = r_E * x_earth; y_earth = r_E * y_earth; z_earth = r_E * z_earth;
-axis_limit = 5*r_E;
+x_earth = r_E * x_earth; y_earth = r_E * y_earth; z_earth = -r_E * z_earth;
+axis_limit = 4*r_E;
 
 % --- set ode solver conditions ---
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
-sim_duration = 5000; % time before and after fly-by [s]
+tspan = linspace(0, 3000, 500);
 
 % 3.1 leading-side fly-by
 V_minus_leading = V_E + v_inf_minus;
 V_plus_leading = V_E + v_inf_plus_leading;
 
 y_leading_plus = [[0; r_p; 0;] [v_p; 0; 0;]];
-tspan = linspace(0, sim_duration, 500);
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_leading_plus, options);
 r_leading_plus = Y(:, 1:3);
-v_leading_plus = Y(:, 4:6);
 
 y_leading_minus = [[0; r_p; 0;] [-v_p; 0; 0;]];
-tspan = linspace(0, sim_duration, 500);
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_leading_minus, options);
 r_leading_minus = Y(:, 1:3);
-v_leading_minus = Y(:, 4:6);
-
-figure("Name", "Leading-Side Fly-By");
-plot3(r_leading_plus(:, 1), r_leading_plus(:, 2), r_leading_plus(:, 3), "g"); hold on;
-plot3(r_leading_minus(:, 1), r_leading_minus(:, 2), r_leading_minus(:, 3), "r");
-surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
-    "CData", earth_img, "EdgeColor", "none")
-legend("outgoing arc", "incoming arc", "")
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
-title("Earth fly-by");
-axis equal; grid on;
-xlim([-axis_limit axis_limit]); ylim([-axis_limit axis_limit]); zlim([-axis_limit axis_limit]);
-hold off;
 
 % 3.2 trailing-side fly-by
 V_minus_trailing = V_E + v_inf_minus;
 V_plus_trailing = V_E + v_inf_plus_trailing;
 
 y_trailing_plus = [[0; -r_p; 0;] [v_p; 0; 0;]];
-tspan = linspace(0, sim_duration, 500);
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_trailing_plus, options);
 r_trailing_plus = Y(:, 1:3);
-v_trailing_plus = Y(:, 4:6);
 
 y_trailing_minus = [[0; -r_p; 0;] [-v_p; 0; 0;]];
-tspan = linspace(0, sim_duration, 500);
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_trailing_minus, options);
 r_trailing_minus = Y(:, 1:3);
-v_trailing_minus = Y(:, 4:6);
-
-figure("Name", "trailing-Side Fly-By");
-plot3(r_trailing_plus(:, 1), r_trailing_plus(:, 2), r_trailing_plus(:, 3), "g"); hold on;
-plot3(r_trailing_minus(:, 1), r_trailing_minus(:, 2), r_trailing_minus(:, 3), "r");
-surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
-    "CData", earth_img, "EdgeColor", "none")
-legend("outgoing arc", "incoming arc", "")
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
-title("Earth fly-by");
-axis equal; grid on;
-xlim([-axis_limit axis_limit]); ylim([-axis_limit axis_limit]); zlim([-axis_limit axis_limit]);
-hold off;
 
 % 3.3 under-the-planet fly-by
 V_minus_under = V_E + v_inf_minus;
 V_plus_under = V_E + v_inf_plus_under;
 
 y_under_plus = [[0; 0; -r_p;] [v_p; 0; 0;]];
-tspan = linspace(0, sim_duration, 500);
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_under_plus, options);
 r_under_plus = Y(:, 1:3);
-v_under_plus = Y(:, 4:6);
 
 y_under_minus = [[0; 0; -r_p;] [-v_p; 0; 0;]];
-tspan = linspace(0, sim_duration, 500);
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_under_minus, options);
 r_under_minus = Y(:, 1:3);
-v_under_minus = Y(:, 4:6);
-
-figure("Name", "under-Side Fly-By");
-plot3(r_under_plus(:, 1), r_under_plus(:, 2), r_under_plus(:, 3), "g"); hold on;
-plot3(r_under_minus(:, 1), r_under_minus(:, 2), r_under_minus(:, 3), "r");
-surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
-    "CData", earth_img, "EdgeColor", "none")
-legend("outgoing arc", "incoming arc", "")
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
-title("Earth fly-by");
-axis equal; grid on;
-xlim([-axis_limit axis_limit]); ylim([-axis_limit axis_limit]); zlim([-axis_limit axis_limit]);
-hold off;
 
 %% results output
+% --- create figure ---
+figure("Name", "Leading-Side Fly-By");
+
+% --- plot leading-side fly-by trajectories
+plot3(r_leading_plus(:, 1), r_leading_plus(:, 2), r_leading_plus(:, 3), "r");
+hold on;
+plot3(r_leading_minus(:, 1), r_leading_minus(:, 2), r_leading_minus(:, 3), "r--");
+
+% --- plot trailing-side fly-by trajectories ---
+plot3(r_trailing_plus(:, 1), r_trailing_plus(:, 2), r_trailing_plus(:, 3), "g");
+plot3(r_trailing_minus(:, 1), r_trailing_minus(:, 2), r_trailing_minus(:, 3), "g--");
+
+% --- plot under-side fly-by trajectories ---
+plot3(r_under_plus(:, 1), r_under_plus(:, 2), r_under_plus(:, 3), "b");
+plot3(r_under_minus(:, 1), r_under_minus(:, 2), r_under_minus(:, 3), "b--");
+
+% --- plot earth surface texture ---
+surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
+    "CData", earth_img, "EdgeColor", "none")
+
+% --- finish up plot properties ---
+legend("leading-side", "", "trailing-side", "", "under-side", "", "")
+xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+title("Earth Fly-by Trajectories");
+axis equal; grid on;
+xlim([-4*r_E 4*r_E]); ylim([-2*r_E 2*r_E]); zlim([-2*r_E 2*r_E]);
+hold off;
+
 dv = abs(norm(v_inf_minus) - norm(v_inf_plus_under));
 
 disp("=== LAB 3 EX. 1a RESULTS ===")
