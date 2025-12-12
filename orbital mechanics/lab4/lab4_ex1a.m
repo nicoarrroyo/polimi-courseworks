@@ -9,7 +9,6 @@ clear; close all; clc;
 % different locations of the incoming asymptote.
 %% 1. solve 2d hyperbola
 % --- constants ---
-G                   = astroConstants(1);    % gravitational constant [km^3 kg^-1 s^-2]
 mu_E                = astroConstants(13);   % earth grav. param. [km^3 s^-2]
 mu_sun              = astroConstants(4);    % sun grav. param. [km^3 s^-2]
 AU                  = astroConstants(2);    % astronomical unit [km]
@@ -25,28 +24,22 @@ a           = - mu_E / (norm(v_inf_minus) ^ 2); % semi-major axis [km]
 turn_angle  = 2 * atan(- a / impact_param_mag); % turn angle, delta [rad]
 ecc         = 1 / sin(turn_angle / 2);          % eccentricity [-]
 r_p         = a * (1 - ecc);                    % pericentre radius [km]
-v_p         = sqrt(2 * mu_E / r_p - mu_E / a);  % pericentre velocity [km s^-1]
-r_soi       = R_E * (mu_E / mu_sun) ^ (2/5);    % radius of sphere of influence [km]
-r_soi = norm(r_soi);
 
 %% 2. compute v_inf_plus for three asymptote positions
 % 2.1 in front of the planet (decreased heliocentric velocity)
 impact_param_leading = [0; impact_param_mag; 0;];
-
 u_leading = cross(-impact_param_leading, v_inf_minus); % vector normal to plane of hyperbola
 u_hat_leading = u_leading / norm(u_leading); % unit vector normal to plane of hyperbola
 v_inf_plus_leading = rodrigues(v_inf_minus, u_hat_leading, turn_angle);
 
 % 2.2 behind the planet (increased heliocentric velocity)
 impact_param_trailing = [0; impact_param_mag; 0;];
-
 u_trailing = cross(impact_param_trailing, v_inf_minus);
 u_hat_trailing = u_trailing / norm(u_trailing);
 v_inf_plus_trailing = rodrigues(v_inf_minus, u_hat_trailing, turn_angle);
 
 % 2.3 under the planet (change of plane)
 impact_param_under = [0; 0; -impact_param_mag;];
-
 u_under = cross(impact_param_under, v_inf_minus);
 u_hat_under = u_under / norm(u_under);
 v_inf_plus_under = rodrigues(v_inf_minus, u_hat_under, turn_angle);
