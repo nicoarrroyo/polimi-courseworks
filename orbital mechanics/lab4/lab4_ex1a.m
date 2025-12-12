@@ -8,32 +8,168 @@ clear; close all; clc;
 % Design a fly-by around the Earth for a fixed impact parameter and 
 % different locations of the incoming asymptote.
 %% 1. solve 2d hyperbola
-% r_soi = r_p * (m_p / m_sun) ^ (2/5);
-
 % --- constants ---
-mu_E = astroConstants(13); % [km^3 s^-2]
-mu_sun = astroConstants(4); % [km^3 s^-2]
-AU = astroConstants(2); % [km]
-R_E = AU .* [1; 0; 0;]; % [km]
+G                   = astroConstants(1);    % gravitational constant [km^3 kg^-1 s^-2]
+mu_E                = astroConstants(13);   % earth grav. param. [km^3 s^-2]
+mu_sun              = astroConstants(4);    % sun grav. param. [km^3 s^-2]
+AU                  = astroConstants(2);    % astronomical unit [km]
+R_E                 = AU .* [0; 1; 0;];     % earth radius [km]
+impact_param_mag    = 9200;                 % impact parameter [km]
 
 % --- initial conditions ---
 v_inf_minus = [15.1; 0; 0;]; % velocity before fly-by [km s^-1]
-v_inf_mag = norm(v_inf_minus); % magnitude of velocity (const.) [km s^-1]
-impact_param_mag = 9200; % impact parameter [km]
-V_E = sqrt(mu_sun / R_E); % earth heliocentric velocity [km s^-1]
 
-a = - mu_E / v_inf_mag^2;
-turn_angle = 2 * atan(- a / impact_param_mag);
-
-% build coordinate system with 
-impact_param = [0; impact_param_mag; 0;];
-
+% --- calculated terms ---
+a           = - mu_E / (norm(v_inf_minus) ^ 2); % semi-major axis [km]
+turn_angle  = 2 * atan(- a / impact_param_mag); % turn angle, delta [rad]
+ecc         = 1 / sin(turn_angle / 2);          % eccentricity [-]
+r_p         = a * (1 - ecc);                    % pericentre radius [km]
+v_p         = sqrt(2 * mu_E / r_p - mu_E / a);  % pericentre velocity [km s^-1]
+r_soi       = R_E * (mu_E / mu_sun) ^ (2/5);    % radius of sphere of influence [km]
+r_soi = norm(r_soi);
 
 %% 2. compute v_inf_plus for three asymptote positions
 % 2.1 in front of the planet (decreased heliocentric velocity)
-u = cross(-impact_param, v_inf_minus); % vector normal to plane of hyperbola
-u_hat = u / norm(u); % unit vector normal to plane of hyperbola
+impact_param_leading = [0; impact_param_mag; 0;];
 
-v_inf_plus = rodrigues(v_inf_minus, u_hat, turn_angle);
+u_leading = cross(-impact_param_leading, v_inf_minus); % vector normal to plane of hyperbola
+u_hat_leading = u_leading / norm(u_leading); % unit vector normal to plane of hyperbola
+v_inf_plus_leading = rodrigues(v_inf_minus, u_hat_leading, turn_angle);
 
-% 2.2 
+% 2.2 behind the planet (increased heliocentric velocity)
+impact_param_trailing = [0; impact_param_mag; 0;];
+
+u_trailing = cross(impact_param_trailing, v_inf_minus);
+u_hat_trailing = u_trailing / norm(u_trailing);
+v_inf_plus_trailing = rodrigues(v_inf_minus, u_hat_trailing, turn_angle);
+
+% 2.3 under the planet (change of plane)
+impact_param_under = [0; 0; -impact_param_mag;];
+
+u_under = cross(impact_param_under, v_inf_minus);
+u_hat_under = u_under / norm(u_under);
+v_inf_plus_under = rodrigues(v_inf_minus, u_hat_under, turn_angle);
+
+%% 3. compute V_minus, V_plus, and the incoming and outgoing heliocentric arcs
+% --- common ---
+V_E = sqrt(mu_sun / R_E)'; % earth heliocentric velocity [km s^-1]
+
+% --- plot details ---
+earth_img = imread("EarthTexture.jpg");
+[x_earth, y_earth, z_earth] = sphere(50); r_E = astroConstants(23);
+x_earth = r_E * x_earth; y_earth = r_E * y_earth; z_earth = r_E * z_earth;
+axis_limit = 5*r_E;
+
+% --- set ode solver conditions ---
+options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
+sim_duration = 5000; % time before and after fly-by [s]
+
+% 3.1 leading-side fly-by
+V_minus_leading = V_E + v_inf_minus;
+V_plus_leading = V_E + v_inf_plus_leading;
+
+y_leading_plus = [[0; r_p; 0;] [v_p; 0; 0;]];
+tspan = linspace(0, sim_duration, 500);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_leading_plus, options);
+r_leading_plus = Y(:, 1:3);
+v_leading_plus = Y(:, 4:6);
+
+y_leading_minus = [[0; r_p; 0;] [-v_p; 0; 0;]];
+tspan = linspace(0, sim_duration, 500);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_leading_minus, options);
+r_leading_minus = Y(:, 1:3);
+v_leading_minus = Y(:, 4:6);
+
+figure("Name", "Leading-Side Fly-By");
+plot3(r_leading_plus(:, 1), r_leading_plus(:, 2), r_leading_plus(:, 3), "g"); hold on;
+plot3(r_leading_minus(:, 1), r_leading_minus(:, 2), r_leading_minus(:, 3), "r");
+surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
+    "CData", earth_img, "EdgeColor", "none")
+legend("outgoing arc", "incoming arc", "")
+xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+title("Earth fly-by");
+axis equal; grid on;
+xlim([-axis_limit axis_limit]); ylim([-axis_limit axis_limit]); zlim([-axis_limit axis_limit]);
+hold off;
+
+% 3.2 trailing-side fly-by
+V_minus_trailing = V_E + v_inf_minus;
+V_plus_trailing = V_E + v_inf_plus_trailing;
+
+y_trailing_plus = [[0; -r_p; 0;] [v_p; 0; 0;]];
+tspan = linspace(0, sim_duration, 500);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_trailing_plus, options);
+r_trailing_plus = Y(:, 1:3);
+v_trailing_plus = Y(:, 4:6);
+
+y_trailing_minus = [[0; -r_p; 0;] [-v_p; 0; 0;]];
+tspan = linspace(0, sim_duration, 500);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_trailing_minus, options);
+r_trailing_minus = Y(:, 1:3);
+v_trailing_minus = Y(:, 4:6);
+
+figure("Name", "trailing-Side Fly-By");
+plot3(r_trailing_plus(:, 1), r_trailing_plus(:, 2), r_trailing_plus(:, 3), "g"); hold on;
+plot3(r_trailing_minus(:, 1), r_trailing_minus(:, 2), r_trailing_minus(:, 3), "r");
+surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
+    "CData", earth_img, "EdgeColor", "none")
+legend("outgoing arc", "incoming arc", "")
+xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+title("Earth fly-by");
+axis equal; grid on;
+xlim([-axis_limit axis_limit]); ylim([-axis_limit axis_limit]); zlim([-axis_limit axis_limit]);
+hold off;
+
+% 3.3 under-the-planet fly-by
+V_minus_under = V_E + v_inf_minus;
+V_plus_under = V_E + v_inf_plus_under;
+
+y_under_plus = [[0; 0; -r_p;] [v_p; 0; 0;]];
+tspan = linspace(0, sim_duration, 500);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_under_plus, options);
+r_under_plus = Y(:, 1:3);
+v_under_plus = Y(:, 4:6);
+
+y_under_minus = [[0; 0; -r_p;] [-v_p; 0; 0;]];
+tspan = linspace(0, sim_duration, 500);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y_under_minus, options);
+r_under_minus = Y(:, 1:3);
+v_under_minus = Y(:, 4:6);
+
+figure("Name", "under-Side Fly-By");
+plot3(r_under_plus(:, 1), r_under_plus(:, 2), r_under_plus(:, 3), "g"); hold on;
+plot3(r_under_minus(:, 1), r_under_minus(:, 2), r_under_minus(:, 3), "r");
+surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
+    "CData", earth_img, "EdgeColor", "none")
+legend("outgoing arc", "incoming arc", "")
+xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+title("Earth fly-by");
+axis equal; grid on;
+xlim([-axis_limit axis_limit]); ylim([-axis_limit axis_limit]); zlim([-axis_limit axis_limit]);
+hold off;
+
+%% results output
+dv = abs(norm(v_inf_minus) - norm(v_inf_plus_under));
+
+disp("=== LAB 3 EX. 1a RESULTS ===")
+fprintf("\n--- COMMON RESULTS ---\n")
+fprintf("       turn angle: %.4f deg\n", rad2deg(turn_angle));
+fprintf("pericentre radius: %.4f km s^-1\n", r_p);
+fprintf("   fly-by delta-v: %.4f km s^-1\n", dv);
+fprintf("  semi-major axis: %.4f km\n", a);
+fprintf("     eccentricity: %.4f km\n", ecc);
+
+fprintf("\n--- LEADING-SIDE FLY-BY ---\n")
+fprintf("V\x207B:   %.4f %.4f %.4f km\n", V_minus_trailing);
+fprintf("V\x207A:   %.4f %.4f %.4f km\n", V_plus_trailing);
+fprintf("v\x207A\x221e:  %.4f %.4f %.4f km\n", v_inf_plus_leading);
+
+fprintf("\n--- TRAILING-SIDE FLY-BY ---\n")
+fprintf("V\x207B:   %.4f %.4f %.4f km\n", V_minus_trailing);
+fprintf("V\x207A:   %.4f %.4f %.4f km\n", V_plus_trailing);
+fprintf("v\x207A\x221e:  %.4f %.4f %.4f km\n", v_inf_plus_trailing);
+
+fprintf("\n--- UNDER-SIDE FLY-BY ---\n")
+fprintf("V\x207B:   %.4f %.4f %.4f km\n", V_minus_under);
+fprintf("V\x207A:   %.4f %.4f %.4f km\n", V_plus_under);
+fprintf("v\x207A\x221e:  %.4f %.4f %.4f km\n", v_inf_plus_under);
