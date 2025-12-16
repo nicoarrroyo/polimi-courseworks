@@ -100,7 +100,7 @@ xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
 title("Earth Fly-by Trajectories");
 
 axis equal; grid on;
-xlim([-5*r_E 5*r_E]); ylim([-2*r_E 2*r_E]); zlim([-2*r_E 2*r_E]);
+xlim([-2*r_E 16*r_E]);
 hold off;
 
 % --- output final results ---
