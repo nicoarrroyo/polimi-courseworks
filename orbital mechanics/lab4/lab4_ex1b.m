@@ -82,7 +82,7 @@ hold off;
 
 %% 3. compute V_minus and the incoming heliocentric arc for each Δ
 % --- compute V_minus ---
-V_E = sqrt(mu_sun / norm(R_E)) * [0; 1; 0;]; % earth heliocentric velocity [km s^-1]
+V_E = sqrt(mu_sun / norm(R_E)) * [-R_E(2); R_E(1); 0;] / AU; % earth heliocentric velocity [km s^-1]
 V_minus = V_E + v_inf_minus;
 
 % --- propagate the incoming heliocentric arc ---
