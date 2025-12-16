@@ -66,8 +66,8 @@ figure("Name", "Planetocentric Powered Earth Fly-By"); hold on;
 
 % --- set up ode solver conditions ---
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
-steps = 7200;
-tspan = linspace(0, 7200, steps);
+steps = 100;
+tspan = linspace(0, 4800, steps);
 
 % --- propagate and plot incoming planetocentric arc ---
 y = [[r_p; 0; 0] [0; v_p_minus; 0;]];
@@ -90,6 +90,43 @@ surface(x_earth, y_earth, z_earth, "FaceColor", "texturemap", ...
 
 % --- finish up plot properties ---
 legend("Incoming trajectory", "Outgoing trajectory", "Earth Texture")
+xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+title("Powered Earth Fly-by Trajectory");
+grid on; axis equal; hold off;
+
+%% === part 5 (additional) ===
+% i want to plot the heliocentric trajectory too
+figure("Name", "Heliocentric Powered Earth Fly-By"); hold on;
+steps = 1000;
+tspan_helio = linspace(0, 60*60*24*30, steps);
+
+% --- plot position of earth during fly-by ---
+y = [R_E V_E];
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -tspan_helio, y, options);
+R_E_minus = Y(:, 1:3);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 9*tspan_helio, y, options);
+R_E_plus = Y(:, 1:3);
+plot3(R_E_minus(:, 1), R_E_minus(:, 2), R_E_minus(:, 3), "b--");
+plot3(R_E_plus(:, 1), R_E_plus(:, 2), R_E_plus(:, 3), "b");
+scatter3(R_E(1), R_E(2), R_E(3), "filled", "g");
+
+% --- propagate and plot incoming heliocentric arc ---
+y = [R_E V_minus];
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -5*tspan_helio, y, options);
+R_minus = Y(:, 1:3);
+plot3(R_minus(:, 1), R_minus(:, 2), R_minus(:, 3), "r")
+
+% --- propagate and plot outgoing heliocentric arc ---
+y = [R_E V_plus];
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 5*tspan_helio, y, options);
+R_plus = Y(:, 1:3);
+plot3(R_plus(:, 1), R_plus(:, 2), R_plus(:, 3), "g")
+
+% --- plot sun ---
+scatter3(0, 0, 0, "filled", "y");
+
+% --- finish up plot properties ---
+legend("", "", "Earth", "Incoming Trajectory", "Outgoing Trajectory", "Sun")
 xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
 title("Powered Earth Fly-by Trajectory");
 grid on; axis equal; hold off;

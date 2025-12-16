@@ -86,12 +86,12 @@ V_E = sqrt(mu_sun / norm(R_E)) * [-R_E(2); R_E(1); 0;] / AU; % earth heliocentri
 V_minus = V_E + v_inf_minus;
 
 % --- propagate the incoming heliocentric arc ---
-t_span_helio = linspace(0, 2.628 * 10^6, steps); % 1 month in seconds
+tspan_helio = linspace(0, 2.628 * 10^6, steps); % 1 month in seconds
 
 disp("propagating incoming heliocentric arc")
 for i = 1:length(impact_param_mags)
     y = [[AU; 0; 0;] V_minus];
-    [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -t_span_helio, y, options);
+    [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -tspan_helio, y, options);
 end
 R_minus = Y(:, 1:3);
 disp("complete!")
@@ -111,7 +111,7 @@ R_plus = zeros(length(impact_param_mags), steps, 3);
 disp("propagating outgoing heliocentric arc")
 for i = 1:length(impact_param_mags)
     y = [R_E V_plus(i, :)'];
-    [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 23*t_span_helio, y, options);
+    [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 23*tspan_helio, y, options);
     R_plus(i, :, :) = Y(:, 1:3);
 end
 disp("complete!")
@@ -123,9 +123,9 @@ figure("Name", "Heliocentric Different Impact Parameters"); hold on;
 % --- plot position of earth during fly-by ---
 % also propagate earth position before and after fly-by
 y = [R_E V_E];
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -t_span_helio, y, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -tspan_helio, y, options);
 R_E_minus = Y(:, 1:3);
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 11*t_span_helio, y, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 11*tspan_helio, y, options);
 R_E_plus = Y(:, 1:3);
 plot3(R_E_minus(:, 1), R_E_minus(:, 2), R_E_minus(:, 3), "g--");
 plot3(R_E_plus(:, 1), R_E_plus(:, 2), R_E_plus(:, 3), "g");
