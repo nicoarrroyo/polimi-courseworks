@@ -10,8 +10,8 @@ clear; close all; clc;
 %% preamble
 V_minus = [31.5; 5.2; 0;];      % incoming heliocentric velocity [km s^-1]
 V_plus  = [36; 0; 0;];          % outgoing heliocentric velocity [km s^-1]
-mu_E    = astroConstants(13);   % earth gravitational parameter [km^2 s^-3]?
-mu_sun  = astroConstants(4);    % sun gravitational parameter [km^2 s^-3]?
+mu_E    = astroConstants(13);   % earth gravitational parameter [km^2 s^-3]
+mu_sun  = astroConstants(4);    % sun gravitational parameter [km^2 s^-3]
 AU      = astroConstants(2);    % astronomical unit [km]
 R_E     = [0; -1; 0;] * AU;     % earth orbit radius [km]
 r_E     = astroConstants(23);
@@ -145,4 +145,3 @@ fprintf("       ecc before: %.4f\n", ecc_minus);
 fprintf("       SMA before: %.4f km\n", a_minus);
 fprintf("        ecc after: %.4f\n", ecc_plus);
 fprintf("        SMA after: %.4f km\n", a_plus);
-
