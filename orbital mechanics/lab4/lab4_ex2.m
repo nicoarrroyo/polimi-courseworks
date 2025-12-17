@@ -28,20 +28,22 @@ turn_angle = acos(dot(v_inf_minus, v_inf_plus) / (norm(v_inf_minus) * norm(v_inf
 
 %% === part 3 ===
 % Solve the non-linear system for r_p and check its validity
+h_atm = 500; % height of earth atmosphere from sea-level [km]
+
 % --- solve the non-linear system for r_p ---
 eq = @(r_p) turn_angle - ...
     asin(1 / (1 + (r_p * norm(v_inf_plus)^2) / mu_E)) - ...
     asin(1 / (1 + (r_p * norm(v_inf_minus)^2) / mu_E));
-r_p = fzero(eq, r_E + 1000);
+r_p = fzero(eq, r_E + h_atm);
 
 % --- check its validity ---
-h_atm       = 500;          % height of earth atmosphere from sea-level [km]
 r_p_crit    = r_E + h_atm;  % critical fly-by pericentre radius
 
 if r_p < r_p_crit
-    disp("!!! DANGER DANGER DANGER !!!")
-    disp("fly-by pericentre radius is too low!")
-    disp("TERRAIN. PULL UP. TERRAIN. PULL UP.")
+    fprintf("\n!!! DANGER DANGER DANGER !!!\n")
+    fprintf("\nfly-by pericentre radius might be too low!\n")
+    fprintf("\nTERRAIN. PULL UP. TERRAIN. PULL UP.\n")
+    fprintf("\n!!! DANGER DANGER DANGER !!!\n")
 end
 
 h_ga = r_p - r_E;
