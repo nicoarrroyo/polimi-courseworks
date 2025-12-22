@@ -46,6 +46,10 @@ sens_gyro_O = [1,      sens_gyro_eps_xy, sens_gyro_eps_xz;
      sens_gyro_eps_xy, 1,      sens_gyro_eps_yz;
      sens_gyro_eps_xz, sens_gyro_eps_yz, 1];
 
+% DCM GYRO BODY (fixed matrix, doesnt change in time, in our case it is the
+% identity matrix)
+sens_gyro_dcm_body = eye(3);
+
 % dimensions
 sens_gyro_m      = 0.052; % mass [kg]
 sens_gyro_length = 44.8;  % length [mm] 
@@ -131,29 +135,22 @@ sens_eh_O = [1,      sens_eh_eps_xy, sens_eh_eps_xz;
      sens_eh_eps_xz, sens_eh_eps_yz, 1];
 
 % dimensions
-sens_eh_m      = 18 * 10^-3; % mass [kg]
-sens_eh_length = 35;         % length [mm] 
-sens_eh_height = 24;         % height [mm]
-sens_eh_depth  = 20;         % width [mm]
+sens_eh_m      = 33 * 10^-3; % mass [kg] (1)
+sens_eh_length = 43.3;       % length [mm] (1)
+sens_eh_height = 31.8;       % height [mm] (1)
+sens_eh_depth  = 20.7;         % width [mm] (1)
 
 % datasheet values
 sens_eh_accuracy         = 0.997;                     % accuracy (3-sigma)
-% sens_eh_mis_err          = 1 / 1000;                   % misalignment error [mrad]
-% sens_eh_run_run_bias     = 4 / 3600;                   % "sensor turn on" bias [deg s^-1]
-% sens_eh_static_temp_bias = 9 / 3600;                   % "static temperature" bias [deg s^-1]
-% sens_eh_SFE              = 500 * 1e-6;                 % scale factor [-]
-% sens_eh_SFN              = 15 * 1e-6;                  % non linearity scale factor [-]
-sens_eh_update_rate      = 2;                          % [Hz]
-% sens_eh_Ts               = 1 / sens_eh_update_rate;    % sampling time [s]
-% sens_eh_D_bias_inst      = 0.3 / 3600;                 % bias instability [deg s^-1]
-% sens_eh_D_ARW            = 0.15 / sqrt(3600);          % angle random walk [deg s^-1/2]
-% sens_eh_RRW              = 1e-3;                       % rate random walk
-% sens_eh_D_RW             = sens_eh_RRW / sqrt(3600);   % [deg s^-1]
-% sens_eh_D_wn             = sens_eh_D_ARW / sqrt(3600); % Amplitude of white noise 
-% sens_eh_c_time           = 200;                        % [s]
-% sens_eh_FS               = 10;                         % full scale [V]
-% sens_eh_nbits            = 24;                         % [-] # bits
-% sens_eh_LSB = sens_eh_FS / (2 * exp(sens_eh_nbits));   % Least significant bit
+sens_eh_bias_error       = 0.02;                      % bias error [deg]
+sens_eh_mis_err          = 0.01 / 1000;               % misalignment error [mrad] (2)
+sens_eh_fov_coarse       = 60;                        % coarse fov [deg] (1)
+sens_eh_fov_fine         = 7;                         % fine fov [deg] (1)
+sens_eh_update_rate      = 10;                        % [Hz]
+sens_eh_Ts               = 1 / sens_eh_update_rate;   % sampling time [s]
+sens_eh_FS               = 5;                         % full scale [V] (guess)
+sens_eh_nbits            = 16;                        % [-] # bits (guess, typically 12-16 bit AD conversion)
+sens_eh_LSB = sens_eh_FS / (2 * exp(sens_eh_nbits));  % Least significant bit
 
 %% sensors - sun
 T_sun = 60 * 60 * 24 * 365.25;      % solar orbit period [s]
@@ -195,7 +192,7 @@ sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = "0.01";
 sim_options.StartTime = "0";
-sim_options.StopTime = num2str(round(T, 0));
+sim_options.StopTime = num2str(round(T/3, 0));
 
 % simulation outputs
 disp("running sim")
@@ -212,3 +209,14 @@ T_GG = simout.T_GG.Data;
 b_N = simout.b_N.Data; % inertial magnetic flux density
 T_M = simout.T_M.Data; % magnetic torque
 
+% references
+% 1: earth-horizon dimensions
+% https://satcatalog.s3.amazonaws.com/components/25/SatCatalog_-_Adcole_
+% Maryland_Aerospace_-_AI-SES_IR_Earth_Sensor_-_Datasheet.pdf?lastmod=20210708041438
+
+% 2: earth-horizon misalignment error
+% https://digitalcommons.usu.edu/cgi/viewcontent.cgi?article=3096&context=smallsat
+
+% 3: earth-horizon spec sheet
+% https://electronics.leonardo.com/documents/16277707/18404907/IRES_NE_
+% Attitude_Control_Sensors_LQ_mm07787_.pdf?t=1538987566453
