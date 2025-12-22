@@ -116,41 +116,110 @@ sens_m_SFE              = 4885 * 10^-6;                % scale factor [-] from s
 % sens_m_nbits            = 24;                        % [-] # bits
 % sens_m_LSB = sens_m_FS / (2 * exp(sens_m_nbits));    % Least significant bit
 
-%% sensors - earth horizon
-% misalignment matrix
-sens_eh_theta_eps_x = 1e-6; % [rad]
-sens_eh_theta_eps_y = 1e-6; % [rad]
-sens_eh_theta_eps_z = 1e-6; % [rad]
+%% Earth Horizon Sensor Model Parameters
+% Based on MAI-SES IR Earth Sensor specifications
 
-sens_eh_theta_eps=[0,            -sens_eh_theta_eps_z,  sens_eh_theta_eps_y;
-           sens_eh_theta_eps_z,  0,             -sens_eh_theta_eps_x;
-           -sens_eh_theta_eps_y, sens_eh_theta_eps_x,    0];
+% --- Physical Dimensions ---
+sens_eh_m      = 33e-3;     % mass [kg]
+sens_eh_length = 43.3e-3;   % length [m] - CORRECTED to meters
+sens_eh_width  = 31.8e-3;   % width [m]
+sens_eh_height = 20.7e-3;   % height [m]
 
-% non-orthogonality
-sens_eh_eps_xy = 1e-6;  
-sens_eh_eps_xz = 1e-6; 
-sens_eh_eps_yz = 1e-6;  
-sens_eh_O = [1,      sens_eh_eps_xy, sens_eh_eps_xz;
-     sens_eh_eps_xy, 1,      sens_eh_eps_yz;
-     sens_eh_eps_xz, sens_eh_eps_yz, 1];
+% --- Optical Characteristics ---
+sens_eh_fov_coarse       = 60;      % coarse field of view [deg]
+sens_eh_fov_fine         = 7;       % fine field of view [deg]
+sens_eh_fov_coarse_rad   = deg2rad(sens_eh_fov_coarse);  % [rad]
+sens_eh_fov_fine_rad     = deg2rad(sens_eh_fov_fine);    % [rad]
 
-% dimensions
-sens_eh_m      = 33 * 10^-3; % mass [kg] (1)
-sens_eh_length = 43.3;       % length [mm] (1)
-sens_eh_height = 31.8;       % height [mm] (1)
-sens_eh_depth  = 20.7;         % width [mm] (1)
+% --- Accuracy Specifications (using fine FOV resolution) ---
+sens_eh_resolution_fine   = 0.25;    % fine FOV resolution [deg]
+sens_eh_resolution_coarse = 1.0;     % coarse FOV resolution [deg]
 
-% datasheet values
-sens_eh_accuracy         = 0.997;                     % accuracy (3-sigma)
-sens_eh_bias_error       = 0.02;                      % bias error [deg]
-sens_eh_mis_err          = 0.01 / 1000;               % misalignment error [mrad] (2)
-sens_eh_fov_coarse       = 60;                        % coarse fov [deg] (1)
-sens_eh_fov_fine         = 7;                         % fine fov [deg] (1)
-sens_eh_update_rate      = 10;                        % [Hz]
-sens_eh_Ts               = 1 / sens_eh_update_rate;   % sampling time [s]
-sens_eh_FS               = 5;                         % full scale [V] (guess)
-sens_eh_nbits            = 16;                        % [-] # bits (guess, typically 12-16 bit AD conversion)
-sens_eh_LSB = sens_eh_FS / (2 * exp(sens_eh_nbits));  % Least significant bit
+% Convert to radians for simulation
+sens_eh_sigma_1axis = deg2rad(sens_eh_resolution_fine); % 1-sigma noise per axis [rad]
+
+% For 2-axis measurement (pitch and roll from nadir)
+sens_eh_sigma_pitch = sens_eh_sigma_1axis;  % [rad]
+sens_eh_sigma_roll  = sens_eh_sigma_1axis;  % [rad]
+
+% 3-sigma accuracy (as percentage - this doesn't make sense for horizon sensor)
+% REMOVED: sens_eh_accuracy = 0.997; % This is not applicable
+
+% --- Bias and Systematic Errors ---
+% Static bias (offset from true nadir direction)
+sens_eh_bias_pitch = deg2rad(0.1);   % pitch bias [rad] (~0.1 deg typical)
+sens_eh_bias_roll  = deg2rad(0.1);   % roll bias [rad]
+
+% Bias instability (slow drift over time)
+sens_eh_bias_instability = deg2rad(0.05/3600); % [rad/s] (0.05 deg/hr typical)
+
+% --- Misalignment Errors ---
+% Installation misalignment (sensor to body frame)
+sens_eh_theta_eps_x = deg2rad(0.01);  % [rad] (~0.01 deg typical mounting tolerance)
+sens_eh_theta_eps_y = deg2rad(0.01);  % [rad]
+sens_eh_theta_eps_z = deg2rad(0.01);  % [rad]
+
+% Misalignment matrix (small angle approximation)
+sens_eh_theta_eps = [0,                    -sens_eh_theta_eps_z,  sens_eh_theta_eps_y;
+                     sens_eh_theta_eps_z,   0,                   -sens_eh_theta_eps_x;
+                    -sens_eh_theta_eps_y,   sens_eh_theta_eps_x,  0];
+
+% Total misalignment transformation (body to sensor frame)
+sens_eh_C_misalign = eye(3) + sens_eh_theta_eps;
+
+% --- Non-orthogonality (detector axis non-orthogonality) ---
+sens_eh_eps_xy = deg2rad(0.005);  % [rad] (~0.005 deg typical)
+sens_eh_eps_xz = deg2rad(0.005);  % [rad]
+sens_eh_eps_yz = deg2rad(0.005);  % [rad]
+
+sens_eh_O = [1,              sens_eh_eps_xy, sens_eh_eps_xz;
+             sens_eh_eps_xy, 1,              sens_eh_eps_yz;
+             sens_eh_eps_xz, sens_eh_eps_yz, 1];
+
+% --- Scale Factor Error ---
+% Indicates error in converting measured angle to true angle
+sens_eh_scale_factor_error = 0.001;  % 0.1% typical for IR sensors
+
+% --- Temperature Sensitivity ---
+sens_eh_temp_coeff = deg2rad(0.01)/10;  % [rad/°C] (0.01 deg per 10°C)
+sens_eh_temp_nominal = 20;              % [°C] nominal operating temperature
+
+% --- Sampling and Digital Conversion ---
+sens_eh_update_rate = 10;                      % [Hz] typical for static sensors
+sens_eh_Ts          = 1 / sens_eh_update_rate; % sampling time [s]
+
+% ADC characteristics
+sens_eh_nbits = 16;                            % 16-bit ADC (typical)
+sens_eh_FS    = deg2rad(sens_eh_fov_fine);     % full scale = fine FOV [rad]
+sens_eh_LSB   = sens_eh_FS / (2^sens_eh_nbits);% quantization step [rad]
+
+% --- Earth Model Parameters (for horizon sensing) ---
+R_earth = 6371e3;  % Earth radius [m] (mean)
+h_atm   = 40e3;    % atmospheric height for IR horizon [m] (~40 km for 15 μm CO2)
+
+% Effective Earth radius (including atmosphere)
+R_earth_eff = R_earth + h_atm;
+
+% --- Operational Limits ---
+% Minimum altitude for proper operation (FOV must see horizon)
+sens_eh_h_min = 200e3;  % [m] 200 km minimum altitude
+
+% Maximum sun angle for operation (sun interference)
+sens_eh_sun_angle_max = deg2rad(30);  % [rad] 30 deg from Earth limb
+
+% --- Noise Characteristics ---
+% White noise power spectral density
+sens_eh_noise_psd = sens_eh_sigma_1axis / sqrt(sens_eh_Ts);  % [rad/√Hz]
+
+% For Simulink Band-Limited White Noise block
+sens_eh_noise_power = sens_eh_sigma_1axis^2;  % [rad^2]
+
+% --- Random Walk (for modeling long-term drift) ---
+% This is not typically specified for horizon sensors but can be estimated
+sens_eh_random_walk = deg2rad(0.01) * sqrt(sens_eh_Ts);  % [rad/√s]
+
+% Output flags
+sens_eh_validity_threshold = deg2rad(80);  % Max angle from nadir for valid measurement [rad]
 
 %% sensors - sun
 T_sun = 60 * 60 * 24 * 365.25;      % solar orbit period [s]
