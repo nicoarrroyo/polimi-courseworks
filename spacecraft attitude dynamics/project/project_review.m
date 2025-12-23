@@ -28,7 +28,7 @@ T = 2*pi / n;                     % orbital period [s]
 % angular velocities
 w0 = [0; 0; n;]; % [rad s^-1]
 
-%% sensors - gyroscope
+%% Sensors - Gyroscope
 % misalignment matrix
 sens_gyro_theta_eps_x=1e-6;                 % [rad]
 sens_gyro_theta_eps_y=1e-6;                 % [rad]
@@ -72,51 +72,142 @@ sens_gyro_D_wn             = sens_gyro_D_ARW / sqrt(3600); % Amplitude of white 
 sens_gyro_c_time           = 200;                          % [s]
 sens_gyro_FS               = 10;                           % full scale [V]
 sens_gyro_nbits            = 24;                           % [-] # bits
-sens_gyro_LSB = sens_gyro_FS / (2 * exp(sens_gyro_nbits)); % Least significant bit
+sens_gyro_LSB = sens_gyro_FS / (2 ^ sens_gyro_nbits); % Least significant bit
 
-%% sensors - magnetometer
-% misalignment matrix
-sens_m_theta_eps_x=1e-6;                 % [rad]
-sens_m_theta_eps_y=1e-6;                 % [rad]
-sens_m_theta_eps_z=1e-6;                 % [rad]
+%% Sensors - Magnetometer
+% Based on AAC SpaceQuest MAG-3 3-axis fluxgate magnetometer
+% Space-qualified, TRL-9, flight-proven on numerous missions
 
-sens_m_theta_eps=[0,            -sens_m_theta_eps_z,  sens_m_theta_eps_y;
-           sens_m_theta_eps_z,  0,             -sens_m_theta_eps_x;
-           -sens_m_theta_eps_y, sens_m_theta_eps_x,    0];
+% --- Physical Dimensions ---
+sens_mag_length = 82.6e-3;  % length [m]
+sens_mag_width  = 35.1e-3;  % width [m]
+sens_mag_height = 32.3e-3;  % height [m]
+sens_mag_m      = 100e-3;   % mass [kg]
 
-% non-orthogonality
-sens_m_eps_xy = 1e-6;  
-sens_m_eps_xz = 1e-6; 
-sens_m_eps_yz = 1e-6;  
-sens_m_O = [1,      sens_m_eps_xy, sens_m_eps_xz;
-     sens_m_eps_xy, 1,      sens_m_eps_yz;
-     sens_m_eps_xz, sens_m_eps_yz, 1];
+% --- Performance Specifications ---
+% Accuracy (as percentage of full scale)
+sens_mag_accuracy = 0.0075;  % ±0.75% of FS (0.5% typical)
 
-% dimensions
-sens_m_m      = 0.007; % mass [kg]
-% sens_m_length = 44.8;  % length [mm] 
-% sens_m_height = 38.6;  % height [mm]
-% sens_m_depth  = 21.5;  % width [mm]
+% Linearity
+sens_mag_linearity = 0.00015;  % ±0.015% of FS
 
-% datasheet values
-% sens_m_mis_err          = 1 / 1000;                  % misalignment error [mrad]
-% sens_m_run_run_bias     = 4 / 3600;                  % "sensor turn on" bias [deg s^-1]
-% sens_m_static_temp_bias = 9 / 3600;                  % "static temperature" bias [deg s^-1]
-sens_m_SFE              = 4885 * 10^-6;                % scale factor [-] from slide 7 lec 14
-% sens_m_SFN              = 15 * 1e-6;                 % non linearity scale factor [-]
-% sens_m_update_rate      = 100;                       % [Hz]
-% sens_m_Ts               = 1 / sens_m_update_rate;    % sampling time [s]
-% sens_m_D_bias_inst      = 0.3 / 3600;                % bias instability [deg s^-1]
-% sens_m_D_ARW            = 0.15 / sqrt(3600);         % angle random walk [deg s^-1/2]
-% sens_m_RRW              = 1e-3;                      % rate random walk
-% sens_m_D_RW             = sens_m_RRW / sqrt(3600);   % [deg s^-1]
-% sens_m_D_wn             = sens_m_D_ARW / sqrt(3600); % Amplitude of white noise 
-% sens_m_c_time           = 200;                       % [s]
-% sens_m_FS               = 10;                        % full scale [V]
-% sens_m_nbits            = 24;                        % [-] # bits
-% sens_m_LSB = sens_m_FS / (2 * exp(sens_m_nbits));    % Least significant bit
+% Sensitivity (output voltage per field strength)
+sens_mag_sensitivity = 100e-6;  % 100 μV/nT [V/nT]
 
-%% Earth Horizon Sensor Model Parameters
+% Field measurement range
+sens_mag_range = 65e-6;  % ±65 μT (standard range) [T]
+
+% Noise density
+sens_mag_noise_density = 12e-12;  % 12 pT/√Hz @1Hz [T/√Hz]
+
+% Noise density (alternative for 5V model)
+sens_mag_noise_density_5v = 100e-12;  % <100 pT/√Hz @1Hz [T/√Hz]
+
+% Zero field offset
+sens_mag_zero_field_offset = 25e-3;  % ±0.025 V analog output
+
+% --- Temperature Effects ---
+% Scale factor temperature shift
+sens_mag_scale_factor_temp = 0.00007;  % 0.007% FS/°C
+
+% Zero shift with temperature
+sens_mag_zero_temp_shift = 0.6e-9;  % ±0.6 nT/°C [T/°C]
+
+% Operating temperature range
+sens_mag_temp_min = -55;  % [°C]
+sens_mag_temp_max = 85;   % [°C]
+sens_mag_temp_nominal = 20;  % [°C]
+
+% --- Axial Alignment ---
+% Orthogonality between axes
+sens_mag_orthogonality_error = deg2rad(1);  % Better than ±1 deg [rad]
+
+% --- Perming Effects (magnetic memory) ---
+% Susceptibility to perming (residual magnetization)
+sens_mag_perming_shift = 8e-9;  % ±8 nT shift with ±5 Gauss applied [T]
+sens_mag_perming_field = 5e-4;  % ±5 Gauss = 500 μT [T]
+
+% --- Frequency Response ---
+sens_mag_bandwidth = 500;  % 3dB @ >500 Hz (up to 4 kHz wideband)
+
+% --- Sampling Rate ---
+sens_mag_update_rate = 10;  % [Hz] typical for attitude determination
+sens_mag_Ts = 1 / sens_mag_update_rate;  % sampling time [s]
+
+% --- Electrical Specifications ---
+sens_mag_voltage_input = [15, 34];  % 15-34 VDC (or 5V regulated)
+sens_mag_current = 30e-3;  % 30 mA at any input voltage [A]
+sens_mag_power = sens_mag_voltage_input(1) * sens_mag_current;  % ~0.45 W
+
+% Analog output options
+sens_mag_output_voltage = 10;  % ±10 V output [V]
+sens_mag_output_range_T = 100e-6;  % corresponds to ±100 μT [T]
+
+% Alternative: ±5V output for ±60μT
+% sens_mag_output_voltage = 5;
+% sens_mag_output_range_T = 60e-6;
+
+% --- Digital Conversion (ADC) ---
+sens_mag_nbits = 16;  % 16-bit ADC typical for spacecraft magnetometers
+sens_mag_LSB = (2 * sens_mag_range) / (2^sens_mag_nbits);  % [T]
+
+% --- Derived Specifications ---
+% RMS noise at update rate
+sens_mag_noise_rms = sens_mag_noise_density * sqrt(sens_mag_update_rate);  % [T]
+
+% 1-sigma measurement uncertainty (from accuracy spec)
+sens_mag_sigma_1axis = sens_mag_accuracy * sens_mag_range;  % [T]
+
+% Scale factor (converts measured field to true field)
+sens_mag_scale_factor = 1.0;  % nominal, will add error term
+
+% --- Misalignment Matrix ---
+% Installation misalignment (sensor to body frame)
+sens_mag_theta_eps_x = deg2rad(0.5);  % [rad] typical mounting tolerance
+sens_mag_theta_eps_y = deg2rad(0.5);  % [rad]
+sens_mag_theta_eps_z = deg2rad(0.5);  % [rad]
+
+sens_mag_theta_eps = [0,                     -sens_mag_theta_eps_z,  sens_mag_theta_eps_y;
+                      sens_mag_theta_eps_z,   0,                    -sens_mag_theta_eps_x;
+                     -sens_mag_theta_eps_y,   sens_mag_theta_eps_x,  0];
+
+% Total misalignment transformation
+sens_mag_C_misalign = eye(3) + sens_mag_theta_eps;
+
+% --- Non-Orthogonality Matrix (between sensor axes) ---
+% Based on ±1° orthogonality spec
+sens_mag_eps_xy = deg2rad(0.5);  % [rad]
+sens_mag_eps_xz = deg2rad(0.5);  % [rad]
+sens_mag_eps_yz = deg2rad(0.5);  % [rad]
+
+sens_mag_O = [1,                 sens_mag_eps_xy, sens_mag_eps_xz;
+              sens_mag_eps_xy,   1,               sens_mag_eps_yz;
+              sens_mag_eps_xz,   sens_mag_eps_yz, 1];
+
+% % --- Hard Iron and Soft Iron Effects ---
+% % Hard iron: constant magnetic field from spacecraft (ferromagnetic materials)
+% sens_mag_hard_iron = [50e-9; 30e-9; -40e-9];  % [T] typical spacecraft disturbance
+% 
+% % Soft iron: induced magnetization (scaling and rotation)
+% % Represented as a 3x3 matrix deviation from identity
+% sens_mag_soft_iron = eye(3) + 0.01 * randn(3);  % 1% soft iron effect
+
+% --- Bias Instability (Random Walk) ---
+% Not typically specified for magnetometers, but exists
+sens_mag_bias_instability = 0.1e-9;  % [T/s] estimated (0.1 nT/s)
+
+% --- Earth's Magnetic Field (for reference) ---
+% These values are location-dependent; typical LEO values
+B_earth_magnitude_LEO = 30e-6;  % ~30 μT typical in LEO [T]
+B_earth_inclination = deg2rad(60);  % typical inclination [rad]
+
+% --- Output Flags ---
+sens_mag_valid_threshold = 1.5 * sens_mag_range;  % saturation threshold
+
+% --- Radiation Tolerance ---
+sens_mag_radiation_TID = 10e3;  % >10 krad Total Ionizing Dose [rad]
+
+%% Sensors - Earth Horizon
 % Based on MAI-SES IR Earth Sensor specifications
 
 % --- Physical Dimensions ---
@@ -142,9 +233,6 @@ sens_eh_sigma_1axis = deg2rad(sens_eh_resolution_fine); % 1-sigma noise per axis
 sens_eh_sigma_pitch = sens_eh_sigma_1axis;  % [rad]
 sens_eh_sigma_roll  = sens_eh_sigma_1axis;  % [rad]
 
-% 3-sigma accuracy (as percentage - this doesn't make sense for horizon sensor)
-% REMOVED: sens_eh_accuracy = 0.997; % This is not applicable
-
 % --- Bias and Systematic Errors ---
 % Static bias (offset from true nadir direction)
 sens_eh_bias_pitch = deg2rad(0.1);   % pitch bias [rad] (~0.1 deg typical)
@@ -160,6 +248,7 @@ sens_eh_theta_eps_y = deg2rad(0.01);  % [rad]
 sens_eh_theta_eps_z = deg2rad(0.01);  % [rad]
 
 % Misalignment matrix (small angle approximation)
+% this is applicable because we won't use earth-horizon for detumbling
 sens_eh_theta_eps = [0,                    -sens_eh_theta_eps_z,  sens_eh_theta_eps_y;
                      sens_eh_theta_eps_z,   0,                   -sens_eh_theta_eps_x;
                     -sens_eh_theta_eps_y,   sens_eh_theta_eps_x,  0];
