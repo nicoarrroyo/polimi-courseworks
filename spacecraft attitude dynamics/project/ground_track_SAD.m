@@ -1,4 +1,4 @@
-function [ long, lat ] = ground_track( Y, T, w_E )
+function [ long, lat ] = ground_track_SAD( Y, T, w_E )
 %% INPUTS
     % Y, state of orbit throughout timespan time (r, v)
     % theta_g0 [rad], longitude at greenwich meridian at initial time (for
