@@ -1,6 +1,6 @@
-function B_LVLH = get_mag_order_5( R_planet, r_sat, latitude, longitude )
+function B_N = get_mag_order_5( R_planet, r_sat, latitude, longitude )
 
-colatitude = deg2rad(latitude-90); longitude = deg2rad(longitude);
+colatitude = deg2rad(90 - latitude); longitude = deg2rad(longitude);
 
 order_of_model = 5;
 G = zeros(order_of_model, order_of_model + 1);
@@ -16,10 +16,7 @@ G(5, 6) = 13.98;    H(5, 6) = 99.14;
 % Pre-calculate derivative step for P_nm
 d_theta = 1e-5;
 theta_plus = colatitude + d_theta;
-
-Br = 0;
-Bt = 0; % B_theta
-Bp = 0; % B_phi
+Br = 0; Bt = 0; Bp = 0; % B_radial, B_theta, B_phi
 
 for n = 1:order_of_model
     % Calculate distance ratio (Re/r)^(n+2)
@@ -34,7 +31,7 @@ for n = 1:order_of_model
     dP_n = (P_n_plus - P_n) / d_theta;
 
     for m = 0:n
-        % Extract coefficients (MATLAB indices start at 1)
+        % Extract coefficients
         g_nm = G(n, m+1);
         h_nm = H(n, m+1);
         
@@ -47,17 +44,14 @@ for n = 1:order_of_model
         sin_m_phi = sin(m * longitude);
         
         % --- Radial Component (Br) ---
-        % Formula: Sum [ (n+1) * (g*cos + h*sin) * P_nm ]
         term_r = (n + 1) * (g_nm * cos_m_phi + h_nm * sin_m_phi) * P_nm;
         Br = Br + (ratio * term_r);
         
         % --- Co-elevation/colatitude Component (B_colatitude) ---
-        % Formula: - Sum [ (g*cos + h*sin) * dP_nm/dcolatitude ]
         term_t = (g_nm * cos_m_phi + h_nm * sin_m_phi) * dP_nm;
         Bt = Bt - (ratio * term_t);
         
         % --- Azimuth/Phi Component (B_phi) ---
-        % Formula: (-1/sin(colatitude)) * Sum [ m * (-g*sin + h*cos) * P_nm ]
         term_p = m * (-g_nm * sin_m_phi + h_nm * cos_m_phi) * P_nm;
         Bp = Bp + (ratio * term_p);
     end
@@ -65,6 +59,13 @@ end
 
 % Apply the 1/sin(colatitude) factor to B_phi outside the summation
 Bp = Bp * (-1 / sin(colatitude));
-
 B_LVLH = [Br; Bt; Bp;];
+
+% LVLH -> ECI
+A_NLVLH = [ sin(colat)*cos(long),  cos(colat)*cos(long), -sin(long) ;
+         sin(colat)*sin(long),  cos(colat)*sin(long),  cos(long) ;
+         cos(colat),           -sin(colat),            0        ];
+
+B_N = A_NLVLH * B_LVLH;
+
 end
