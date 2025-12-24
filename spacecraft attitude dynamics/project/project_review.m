@@ -15,6 +15,8 @@ A_BN0 = eye(3);
 a = 6900;                         % SMA [km]
 e = 0.01;                         % eccentricity [-]
 inc = deg2rad(10);                % inclination [rad]
+Omega = 0;                        % Right Ascension of Ascending node [rad]
+omega = 0;
 TA0 = 0;                          % initial true anomaly [rad]
 
 M_E = 5.97e24;                    % earth mass [kg]
@@ -335,39 +337,65 @@ h_32 = 241.9;
 h_33 = -543.4;
 
 %% disturbances - magnetism order 5
-% we chose order 5 because order 6 had less than a 1% difference in total 
-% magnitude of the magnetic field vector (see mag_order_pathfinder.m)
-lat = 45.4685; % current dummy latitude (over milan) [deg]
-long = 9.1824; % current dummy longitude (over milan) [deg]
-B_LVLH = get_mag_order_5(R_E, a, lat, long);
+% we chose order 5 because order 6 had less than a 1% difference in the 
+% total magnitude of the magnetic field vector (see mag_order_pathfinder.m)
+
+% to have a real model of the magnetic field at each point in the orbit, we
+% must simulate it beforehand.
+% knowing the initial conditions of the orbit, we can simulate the rest of
+% it and use magnetic field models to predict the state of the field when
+% the spacecraft will be there.
+
+% this simulation of the magnetic field is carried out in the simulation
+% section at the end of this script.
 
 %% disturbances - gravity gradient
 % see simulink model
 
 %% simulation
 % simulation options
+sim_step = 0.01; sim_time = T;
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
-sim_options.FixedStep = "0.01";
+sim_options.FixedStep = num2str(sim_step);
 sim_options.StartTime = "0";
-sim_options.StopTime = num2str(round(T/3, 0));
+sim_options.StopTime = num2str(round(sim_time, 0));
+
+% magnetic field model
+% time span
+period = 2*pi * sqrt(a^3 / mu_E); % orbital period [s]
+tspan = linspace(0, sim_step, sim_time);
+
+% --- orbit propogation ---
+% initial state vector
+[r0, v0] = kep2car( ...
+    a, ...
+    e, ...
+    inc, ...
+    Omega, ...
+    omega, ...
+    TA0);
+y0 = [r0, v0];
+
+% set solver conditions
+options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
+
+% integrate
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan, y0, options);
+
+[long, lat] = ground_track(Y, T, w_E); % longitude and latitude [radians]
+
+for i = 1:(sim_time/sim_step)
+    
+end
+B_N = get_mag_order_5(R_E, a, rad2deg(lat), rad2deg(long));
 
 % simulation outputs
 disp("running sim")
-simout = sim("project_review_simulink.slx", sim_options);
+%simout = sim("project_review_simulink.slx", sim_options);
 disp("sim complete")
 
-% time
-t = simout.tout;
-
-% gravity gradient GG
-T_GG = simout.T_GG.Data;
-
-% magnetism M
-b_N = simout.b_N.Data; % inertial magnetic flux density
-T_M = simout.T_M.Data; % magnetic torque
-
-% references
+%% references
 % 1: earth-horizon dimensions
 % https://satcatalog.s3.amazonaws.com/components/25/SatCatalog_-_Adcole_
 % Maryland_Aerospace_-_AI-SES_IR_Earth_Sensor_-_Datasheet.pdf?lastmod=20210708041438
