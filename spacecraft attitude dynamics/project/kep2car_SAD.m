@@ -1,4 +1,4 @@
-function [r0, v0] = kep2car( a, e, i, Omega, omega, TA, mu, angle )
+function [r0, v0] = kep2car_SAD( a, e, i, Omega, omega, TA, mu, angle )
     % ----- INPUTS -----
     % a: semi-major axis
     % e: eccentricity scalar
