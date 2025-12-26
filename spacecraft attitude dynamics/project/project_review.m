@@ -335,48 +335,17 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % integrate
 [~, Y] = ode113(@(t,y) ode_2bp_SAD(t,y,mu_E), tspan, y0, options);
-r_mags = vecnorm(Y(:, 1:3), 2, 2);
+r_mags = vecnorm(Y(:, 1:3), 2, 2); % create vector of position vector magnitudes
 
 [long, lat] = ground_track_SAD(Y, T, w_E); % longitude and latitude [rad]
 long = rad2deg(long); lat = rad2deg(lat); % longitude and latitude [deg]
 did.disp_prog_25 = 0; did.disp_prog_50 = 0; did.disp_prog_75 = 0;
 
-tic
-disp("creating magnetic field model for orbit sim (this may take a while!)")
-for i = 1:(n_steps)
-    B_N(i, :) = get_mag_order_5( ...
-        R_E, r_mags(i), ...
-        lat(i), long(i), ...
-        G, H, ...
-        5);
-
-    prog = i / n_steps;
-    if and(0.25 < prog, prog < 0.50)
-        if ~ did.disp_prog_25
-            disp("25% complete")
-            did.disp_prog_25 = 1;
-        end
-    elseif and(0.50 < prog, prog < 0.75)
-        if ~ did.disp_prog_50
-            disp("50% complete")
-            did.disp_prog_50 = 1;
-        end
-    elseif and(0.75 < prog, prog < 1)
-        if ~ did.disp_prog_75
-            disp("75% complete")
-            did.disp_prog_75 = 1;
-        end
-    end
-end
-disp("100% complete"); toc
-
-tic
-B_N_2 = get_mag_order_5_vectorised( ...
-    R_E, r_mags, ...
+B_N = get_mag_order_5_vectorised( ...
+    R_E, r_mags, ... % using r_mags instead of a because eccentricity != 0
     lat, long, ...
     G, H, ...
     5);
-toc
 
 sim_data.time = tspan;
 sim_data.signals.values = B_N;
@@ -384,7 +353,7 @@ sim_data.signals.dimensions = width(B_N);
 
 % simulation outputs
 disp("running sim")
-%simout = sim("project_review_simulink.slx", sim_options);
+simout = sim("project_review_simulink.slx", sim_options);
 disp("sim complete")
 
 %% references
