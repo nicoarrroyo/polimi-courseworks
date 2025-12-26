@@ -15,8 +15,8 @@ A_BN0 = eye(3);
 a = 6900;                         % SMA [km]
 e = 0.01;                         % eccentricity [-]
 inc = deg2rad(10);                % inclination [rad]
-Omega = 0;                        % Right Ascension of Ascending node [rad]
-omega = 0;
+Omega = 80.5;                     % Right Ascension of Ascending node [rad]
+omega = 0;                        % Argument of Perigee [rad]
 TA0 = 0;                          % initial true anomaly [rad]
 
 M_E = 5.97e24;                    % earth mass [kg]
@@ -28,7 +28,7 @@ n = sqrt(mu_E / (a^3));           % mean rotational rate [rad s^-1]
 T = 2*pi / n;                     % orbital period [s]
 
 % angular velocities
-w0 = [0; 0; n;]; % [rad s^-1]
+w0 = [0; 0; 0;]; % [rad s^-1]
 
 %% Sensors - Gyroscope
 % misalignment matrix
@@ -140,36 +140,39 @@ sens_mag.orthogonality_error = deg2rad(1);  % Better than ±1 deg [rad]
 
 % --- Perming Effects (magnetic memory) ---
 % Susceptibility to perming (residual magnetization)
-sens_mag.perming_shift = 8e-9;  % ±8 nT shift with ±5 Gauss applied [T]
-sens_mag.perming_field = 5e-4;  % ±5 Gauss = 500 μT [T]
+sens_mag.perming_shift = 8e-9; % ±8 nT shift with ±5 Gauss applied [T]
+sens_mag.perming_field = 5e-4; % ±5 Gauss = 500 μT [T]
 
 % --- Frequency Response ---
-sens_mag.bandwidth = 500;  % 3dB @ >500 Hz (up to 4 kHz wideband)
+sens_mag.bandwidth = 500; % 3dB @ >500 Hz (up to 4 kHz wideband)
 
 % --- Sampling Rate ---
-sens_mag.update_rate = 10;  % [Hz] typical for attitude determination
-sens_mag.Ts = 1 / sens_mag.update_rate;  % sampling time [s]
+sens_mag.update_rate = 10; % [Hz] typical for attitude determination
+sens_mag.Ts = 1 / sens_mag.update_rate; % sampling time [s]
 
 % --- Digital Conversion (ADC) ---
-sens_mag.nbits = 16;  % 16-bit ADC typical for spacecraft magnetometers
-sens_mag.LSB = (2 * sens_mag.range) / (2^sens_mag.nbits);  % [T]
+sens_mag.nbits = 16; % 16-bit ADC typical for spacecraft magnetometers
+sens_mag.LSB = (2 * sens_mag.range) / (2^sens_mag.nbits); % [T]
 
 % --- Derived Specifications ---
 % RMS noise at update rate
-sens_mag.noise_rms = sens_mag.noise_density * sqrt(sens_mag.update_rate);  % [T]
+sens_mag.noise_rms = sens_mag.noise_density * sqrt(sens_mag.update_rate); % [T]
 
 % 1-sigma measurement uncertainty (from accuracy spec)
-sens_mag.sigma_1axis = sens_mag.accuracy * sens_mag.range;  % [T]
+sens_mag.sigma_1axis = sens_mag.accuracy * sens_mag.range; % [T]
+
+% For Simulink Band-Limited White Noise block
+sens_mag.noise_power = sens_mag.sigma_1axis^2; % [rad^2]
 
 % Scale factor (converts measured field to true field)
-sens_mag.scale_factor = 0.001;  % nominal, will add error term
+sens_mag.scale_factor_error = 0.001; % nominal, will add error term
 
 % --- Bias Instability (Random Walk) ---
 % Not typically specified for magnetometers, but exists
-sens_mag.bias_instability = 0.1e-9;  % [T/s] estimated (0.1 nT/s)
+sens_mag.bias_instability = 0.1e-9; % [T/s] estimated (0.1 nT/s)
 
 % --- Output Flags ---
-sens_mag.valid_threshold = 1.5 * sens_mag.range;  % saturation threshold
+sens_mag.valid_threshold = 1.5 * sens_mag.range; % saturation threshold
 
 %% Sensors - Earth Horizon
 % Based on MAI-SES IR Earth Sensor specifications
@@ -181,14 +184,12 @@ sens_eh.width  = 31.8e-3;   % width [m]
 sens_eh.height = 20.7e-3;   % height [m]
 
 % --- Optical Characteristics ---
-sens_eh.fov_coarse       = 60;      % coarse field of view [deg]
-sens_eh.fov_fine         = 7;       % fine field of view [deg]
-sens_eh.fov_coarse_rad   = deg2rad(sens_eh.fov_coarse);  % [rad]
-sens_eh.fov_fine_rad     = deg2rad(sens_eh.fov_fine);    % [rad]
+sens_eh.fov_coarse       = deg2rad(60);      % coarse field of view [rad]
+sens_eh.fov_fine         = deg2rad(7);       % fine field of view [rad]
 
 % --- Accuracy Specifications (using fine FOV resolution) ---
-sens_eh.resolution_fine   = 0.25;    % fine FOV resolution [deg]
-sens_eh.resolution_coarse = 1.0;     % coarse FOV resolution [deg]
+sens_eh.resolution_fine   = 0.25;   % fine FOV resolution [deg]
+sens_eh.resolution_coarse = 1.0;    % coarse FOV resolution [deg]
 
 % Convert to radians for simulation
 sens_eh.sigma_1axis = deg2rad(sens_eh.resolution_fine); % 1-sigma noise per axis [rad]
@@ -242,16 +243,15 @@ sens_eh.update_rate = 10;                      % [Hz] typical for static sensors
 sens_eh.Ts          = 1 / sens_eh.update_rate; % sampling time [s]
 
 % ADC characteristics
-sens_eh.nbits = 16;                            % 16-bit ADC (typical)
-sens_eh.FS    = deg2rad(sens_eh.fov_fine);     % full scale = fine FOV [rad]
-sens_eh.LSB   = sens_eh.FS / (2^sens_eh.nbits);% quantization step [rad]
+sens_eh.nbits = 16;                             % 16-bit ADC (typical)
+sens_eh.FS    = deg2rad(sens_eh.fov_fine);      % full scale = fine FOV [rad]
+sens_eh.LSB   = sens_eh.FS / (2^sens_eh.nbits); % quantization step [rad]
 
 % --- Earth Model Parameters (for horizon sensing) ---
-R_earth = 6371e3;  % Earth radius [m] (mean)
-h_atm   = 40e3;    % atmospheric height for IR horizon [m] (~40 km for 15 μm CO2)
+h_atm = 40 * 10^3; % atmospheric height for IR horizon [m] (~40 km for 15 μm CO2)
 
 % Effective Earth radius (including atmosphere)
-R_earth_eff = R_earth + h_atm;
+R_earth_eff = R_E + h_atm;
 
 % --- Operational Limits ---
 % Minimum altitude for proper operation (FOV must see horizon)
@@ -261,9 +261,6 @@ sens_eh.h_min = 200e3;  % [m] 200 km minimum altitude
 sens_eh.sun_angle_max = deg2rad(30);  % [rad] 30 deg from Earth limb
 
 % --- Noise Characteristics ---
-% White noise power spectral density
-sens_eh.noise_psd = sens_eh.sigma_1axis / sqrt(sens_eh.Ts);  % [rad/√Hz]
-
 % For Simulink Band-Limited White Noise block
 sens_eh.noise_power = sens_eh.sigma_1axis^2;  % [rad^2]
 
@@ -285,17 +282,6 @@ j = [0.01; 0.05; 0.01;]; % magnetic dipole moment [amp m^2]
 % we chose order 5 because order 6 had less than a 1% difference in the 
 % total magnitude of the magnetic field vector (see mag_order_pathfinder.m)
 
-B_N = zeros(n_steps, 3);
-G = zeros(5, 5 + 1);
-H = zeros(5, 5 + 1);
-
-G(5, 1) = -234.42;
-G(5, 2) = 47.52;    H(5, 2) = 47.52;
-G(5, 3) = 208.36;   H(5, 3) = 208.36;
-G(5, 4) = -121.43;  H(5, 4) = -121.43;
-G(5, 5) = 32.09;    H(5, 5) = 32.09;
-G(5, 6) = 13.98;    H(5, 6) = 99.14;
-
 % to have a real model of the magnetic field at each point in the orbit, we
 % must simulate it beforehand.
 % knowing the initial conditions of the orbit, we can simulate the rest of
@@ -305,13 +291,12 @@ G(5, 6) = 13.98;    H(5, 6) = 99.14;
 % this simulation of the magnetic field is carried out in the simulation
 % section at the end of this script.
 
-
 %% disturbances - gravity gradient
 % see simulink model
 
 %% simulation
 % simulation options
-sim_step = 0.01; sim_time = round(T/10, 0);
+sim_step = 0.01; sim_time = round(T/15, 0);
 sim_options.SolverType = "Fixed-step";
 sim_options.Solver = "ode4";
 sim_options.FixedStep = num2str(sim_step);
@@ -322,6 +307,17 @@ sim_options.StopTime = num2str(sim_time);
 % time span
 n_steps = sim_time/sim_step;
 tspan = linspace(0, sim_time, n_steps);
+
+B_N = zeros(n_steps, 3);
+G = zeros(5, 5 + 1);
+H = zeros(5, 5 + 1);
+
+G(5, 1) = -234.42;
+G(5, 2) = 47.52;    H(5, 2) = 47.52;
+G(5, 3) = 208.36;   H(5, 3) = 208.36;
+G(5, 4) = -121.43;  H(5, 4) = -121.43;
+G(5, 5) = 32.09;    H(5, 5) = 32.09;
+G(5, 6) = 13.98;    H(5, 6) = 99.14;
 
 % --- orbit propogation ---
 % initial state vector
@@ -339,20 +335,48 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % integrate
 [~, Y] = ode113(@(t,y) ode_2bp_SAD(t,y,mu_E), tspan, y0, options);
+r_mags = vecnorm(Y(:, 1:3), 2, 2);
 
 [long, lat] = ground_track_SAD(Y, T, w_E); % longitude and latitude [rad]
 long = rad2deg(long); lat = rad2deg(lat); % longitude and latitude [deg]
+did.disp_prog_25 = 0; did.disp_prog_50 = 0; did.disp_prog_75 = 0;
 
 tic
 disp("creating magnetic field model for orbit sim (this may take a while!)")
 for i = 1:(n_steps)
     B_N(i, :) = get_mag_order_5( ...
-        R_E, a, ...
+        R_E, r_mags(i), ...
         lat(i), long(i), ...
         G, H, ...
         5);
+
+    prog = i / n_steps;
+    if and(0.25 < prog, prog < 0.50)
+        if ~ did.disp_prog_25
+            disp("25% complete")
+            did.disp_prog_25 = 1;
+        end
+    elseif and(0.50 < prog, prog < 0.75)
+        if ~ did.disp_prog_50
+            disp("50% complete")
+            did.disp_prog_50 = 1;
+        end
+    elseif and(0.75 < prog, prog < 1)
+        if ~ did.disp_prog_75
+            disp("75% complete")
+            did.disp_prog_75 = 1;
+        end
+    end
 end
-disp("complete"); toc
+disp("100% complete"); toc
+
+tic
+B_N_2 = get_mag_order_5_vectorised( ...
+    R_E, r_mags, ...
+    lat, long, ...
+    G, H, ...
+    5);
+toc
 
 sim_data.time = tspan;
 sim_data.signals.values = B_N;
@@ -360,7 +384,7 @@ sim_data.signals.dimensions = width(B_N);
 
 % simulation outputs
 disp("running sim")
-simout = sim("project_review_simulink.slx", sim_options);
+%simout = sim("project_review_simulink.slx", sim_options);
 disp("sim complete")
 
 %% references
