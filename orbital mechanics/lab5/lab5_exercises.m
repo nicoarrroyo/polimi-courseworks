@@ -49,6 +49,7 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
     tspan, ...
     kep0, ...
     options);
+Y_gauss(:, 3:6) = rad2deg(Y_gauss(:, 3:6));
 
 %% 2b. Propagate the given orbit in Cartesian coordinates, and convert the 
 % results to Keplerian elements
@@ -73,9 +74,12 @@ r = Y_car(:, 1:3);
 v = Y_car(:, 4:6);
 
 [a, e, i, Omega, omega, TA] = car2kep(r, v, params.mu);
-Y_car_kep_elements = [a, e, rad2deg(i), rad2deg(Omega), rad2deg(omega), rad2deg(TA)];
+Y_car_kep_elements = [a, e, i, Omega, omega, TA];
+Y_car_kep_elements(:, 3:6) = rad2deg(Y_car_kep_elements(:, 3:6));
+Y_car_kep_elements(:, 4:6) = unwrap(Y_car_kep_elements(:, 4:6));
 
 % --- compute the error between the gaussian and cartesian solutions ---
+error = zeros(size(Y_gauss));
 if length(Y_gauss) == length(Y_car_kep_elements)
     error = (Y_gauss - Y_car_kep_elements) ./ Y_gauss;
     bad_sizes = 0;
@@ -84,7 +88,14 @@ else
     bad_sizes = 1;
 end
 
-%% 2c. For each element
+%% 2c. Plot some characteristics for each element
+% see later
+
+%% 3a. Choose an appropriate cut-off period to remove oscillations
+
+%% 3b. Filter all elements
+
+%% 3c. Plot together the filtered and unfiltered results for each element
 T_plot = T / period;
 
 if ~bad_sizes
@@ -92,22 +103,22 @@ for kep_el = 1:width(Y_gauss)
     switch kep_el
         case 1
             fig_name = "Semi-major Axis";
-            el_char = "a"; el_unit = "km";
+            el_name = "a"; el_unit = "km";
         case 2
             fig_name = "Eccentricity";
-            el_char = "e"; el_unit = "-";
+            el_name = "e"; el_unit = "-";
         case 3
             fig_name = "Inclination";
-            el_char = "i"; el_unit = "deg";
+            el_name = "i"; el_unit = "deg";
         case 4
             fig_name = "Right Ascension of Ascending Node";
-            el_char = "Omega"; el_unit = "deg";
+            el_name = "Omega"; el_unit = "deg";
         case 5
             fig_name = "Argument of Perigee";
-            el_char = "omega"; el_unit = "deg";
+            el_name = "omega"; el_unit = "deg";
         case 6
             fig_name = "True Anomaly (TA)";
-            el_char = "TA"; el_unit = "deg";
+            el_name = "TA"; el_unit = "deg";
     end
     % --- plot the error between both solutions ---
     figure("Name", fig_name)
@@ -138,3 +149,6 @@ for kep_el = 1:width(Y_gauss)
     % --- plot the filtered and unfiltered results ---
 end
 end
+
+%% 3d. Compare the slopes of the filtered Omega and omega with the 
+% analytical J2 approximations
