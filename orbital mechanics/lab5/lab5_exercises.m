@@ -72,8 +72,8 @@ y0 = [r0; v0;];
 r = Y_car(:, 1:3);
 v = Y_car(:, 4:6);
 
-[a, e, i, Omega, omega, TA] = car2kep(r, v);
-Y_car_kep_elements = [a, e, i, Omega, omega, TA];
+[a, e, i, Omega, omega, TA] = car2kep(r, v, params.mu);
+Y_car_kep_elements = [a, e, rad2deg(i), rad2deg(Omega), rad2deg(omega), rad2deg(TA)];
 
 % --- compute the error between the gaussian and cartesian solutions ---
 if length(Y_gauss) == length(Y_car_kep_elements)
@@ -90,33 +90,51 @@ T_plot = T / period;
 if ~bad_sizes
 for kep_el = 1:width(Y_gauss)
     switch kep_el
-        case 1; fig_name = "Semi-major Axis";
-        case 2; fig_name = "Eccentricity";
-        case 3; fig_name = "Inclination";
-        case 4; fig_name = "Right Ascension of Ascending Node (Omega)";
-        case 5; fig_name = "Argument of Perigee (omega)";
-        case 6; fig_name = "True Anomaly (TA)";
+        case 1
+            fig_name = "Semi-major Axis";
+            el_char = "a"; el_unit = "km";
+        case 2
+            fig_name = "Eccentricity";
+            el_char = "e"; el_unit = "-";
+        case 3
+            fig_name = "Inclination";
+            el_char = "i"; el_unit = "deg";
+        case 4
+            fig_name = "Right Ascension of Ascending Node";
+            el_char = "Omega"; el_unit = "deg";
+        case 5
+            fig_name = "Argument of Perigee";
+            el_char = "omega"; el_unit = "deg";
+        case 6
+            fig_name = "True Anomaly (TA)";
+            el_char = "TA"; el_unit = "deg";
     end
     % --- plot the error between both solutions ---
     figure("Name", fig_name)
     subplot(3, 1, 1);
-    plot(T_plot, Y_gauss(:,kep_el));
-    title("Cartesian vs Gaussian Error"); legend("Gaussian", "Cartesian");
-    xlabel("Time [n orbits]"); ylabel("(a_gauss - a_car) / a_gauss");
+    plot(T_plot, error(:,kep_el));
+    title("Cartesian vs Gaussian Error");
+    xlabel("Time [n orbits]");
+    ylabel("(" + el_name + "_g_a_u_s_s - " + el_name + "_c_a_r) / " + el_name + "_g_a_u_s_s");
     xlim([T_plot(1), T_plot(end)]);
-    
+
     % --- plot both solutions together (gauss and cartesian) ---
     subplot(3, 1, 2);
-    plot(T_plot, Y_gauss(:,kep_el));
+    plot(T_plot, Y_gauss(:,kep_el)); hold on;
     plot(T_plot, Y_car_kep_elements(:,kep_el));
     title("All Orbits"); legend("Gaussian", "Cartesian");
-    xlabel("Time [n orbits]"); ylabel("a [km]"); xlim([T_plot(1), T_plot(end)]);
+    xlabel("Time [n orbits]"); ylabel(el_name + " [" + el_unit + "]");
+    xlim([T_plot(1), T_plot(end)]);
+    hold off;
+
+    subplot(3, 1, 3);
+    portion_of_data = round(length(T_plot) / 10, 0);
+    plot(T_plot(1:portion_of_data), Y_gauss(1:portion_of_data,kep_el)); hold on;
+    plot(T_plot(1:portion_of_data), Y_car_kep_elements(1:portion_of_data,kep_el));
+    title("10% of Orbits"); legend("Gaussian", "Cartesian");
+    xlabel("Time [n orbits]"); ylabel(el_name + " [" + el_unit + "]");
+    hold off;
     
     % --- plot the filtered and unfiltered results ---
-    subplot(3, 1, 3);
-    portion_of_data = round(length(T) / 10, 0);
-    plot(T_plot(1:portion_of_data)/period, Y_gauss(1:portion_of_data,kep_el));
-    title("10% of Orbits"); legend("Gaussian", "Cartesian");
-    xlabel("Time [n orbits]"); ylabel("a [km]");
 end
 end
