@@ -21,17 +21,17 @@ params.J2 = astroConstants(9);
 
 % --- set initial time and state: t0, s0 ---
 t0 = 0;
-a0 = 7571;          % Semi-major axis [km]
-e0 = 0.01;          % Eccentricity
-i0 = deg2rad(87.9); % Inclination [deg]
-Omega0 = pi;        % RAAN [deg]
-omega0 = pi;        % Argument of periapsis [deg]
-TA0 = 0;            % True anomaly [deg]
+a0 = 7200;          % Semi-major axis [km]
+e0 = 0.0001;        % Eccentricity
+i0 = deg2rad(95);   % Inclination [rad]
+Omega0 = 0;         % RAAN [rad]
+omega0 = 0;         % Argument of periapsis [rad]
+TA0 = 0;            % True anomaly [rad]
 
 kep0 = [a0; e0; i0; Omega0; omega0; TA0;];
 
 % --- set intergration time: tspan ---
-n_orbits = 100;
+n_orbits = 500;
 step_size = 5; % [s]
 
 period = 2*pi * sqrt(a0^3 / params.mu);
@@ -44,12 +44,14 @@ tspan = linspace(t0, tfinal, n_steps);
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 %% 2a. Propagate the given orbit using Gauss planetary equations
+tic; disp("Gauss propogation...");
 [T, Y_gauss] = ode113( ...
     @(t, k) eq_motion_gauss(t, k, @acc_pert_j2, params), ...
     tspan, ...
     kep0, ...
     options);
 Y_gauss(:, 3:6) = rad2deg(Y_gauss(:, 3:6));
+toc
 
 %% 2b. Propagate the given orbit in Cartesian coordinates, and convert the 
 % results to Keplerian elements
@@ -65,6 +67,7 @@ Y_gauss(:, 3:6) = rad2deg(Y_gauss(:, 3:6));
     );
 y0 = [r0; v0;];
 
+tic; disp("Cartesian propogation");
 [~, Y_car] = ode113( ...
     @(t,y) ode_2bp_j2(t, y, params.mu, params.J2, params.r_planet), ...
     tspan, ...
@@ -77,6 +80,7 @@ v = Y_car(:, 4:6);
 Y_car_kep_elements = [a, e, i, Omega, omega, TA];
 Y_car_kep_elements(:, 3:6) = rad2deg(Y_car_kep_elements(:, 3:6));
 Y_car_kep_elements(:, 4:6) = unwrap(Y_car_kep_elements(:, 4:6));
+toc
 
 % --- compute the error between the gaussian and cartesian solutions ---
 error = zeros(size(Y_gauss));
@@ -92,8 +96,18 @@ end
 % see later
 
 %% 3a. Choose an appropriate cut-off period to remove oscillations
+% The primary short-period oscillation due to J2 corresponds to the orbital 
+% period[cite: 327]. We set the window width to one orbital period.
+% The number of steps in one period is defined by the period divided by step_size.
+window_width = round(period / step_size); 
 
 %% 3b. Filter all elements
+Y_gauss_unwrapped = Y_gauss;
+% Convert angles (columns 3-6) to radians, unwrap, and convert back to degrees
+Y_gauss_unwrapped(:, 3:6) = rad2deg(unwrap(deg2rad(Y_gauss(:, 3:6))));
+
+% Apply the moving mean filter
+Y_gauss_filtered = movmean(Y_gauss_unwrapped, window_width, 1);
 
 %% 3c. Plot together the filtered and unfiltered results for each element
 T_plot = T / period;
@@ -133,7 +147,8 @@ for kep_el = 1:width(Y_gauss)
     subplot(3, 1, 2);
     plot(T_plot, Y_gauss(:,kep_el)); hold on;
     plot(T_plot, Y_car_kep_elements(:,kep_el));
-    title("All Orbits"); legend("Gaussian", "Cartesian");
+    plot(T_plot, Y_gauss_filtered(:, kep_el));
+    title("All Orbits"); legend("Gaussian", "Cartesian", "Secular");
     xlabel("Time [n orbits]"); ylabel(el_name + " [" + el_unit + "]");
     xlim([T_plot(1), T_plot(end)]);
     hold off;
@@ -142,13 +157,50 @@ for kep_el = 1:width(Y_gauss)
     portion_of_data = round(length(T_plot) / 10, 0);
     plot(T_plot(1:portion_of_data), Y_gauss(1:portion_of_data,kep_el)); hold on;
     plot(T_plot(1:portion_of_data), Y_car_kep_elements(1:portion_of_data,kep_el));
-    title("10% of Orbits"); legend("Gaussian", "Cartesian");
+    plot(T_plot(1:portion_of_data), Y_gauss_filtered(1:portion_of_data, kep_el));
+    title("10% of Orbits"); legend("Gaussian", "Cartesian", "Secular");
     xlabel("Time [n orbits]"); ylabel(el_name + " [" + el_unit + "]");
     hold off;
     
     % --- plot the filtered and unfiltered results ---
+    % see subplots 3,1,2 and 3,1,3
 end
 end
 
-%% 3d. Compare the slopes of the filtered Omega and omega with the 
-% analytical J2 approximations
+%% 3d. Compare the slopes of the filtered Omega and omega with analytical J2
+% Analytical approximations for secular rates 
+% Constants
+mu_E = params.mu;
+R_E = params.r_planet;
+J2 = params.J2;
+
+% Common term in the J2 secular equations: (3/2)*n*J2*(Re/p)^2
+common_factor = (1.5 * sqrt(mu_E) * J2 * R_E^2) / ((1 - e0^2)^2 * a0^3.5);
+
+% Analytical Rates [rad/s]
+dOmega_dt_anal = -common_factor * cos(i0); 
+domega_dt_anal = common_factor * (2 - 2.5 * sin(i0)^2); % Equivalent to -[...](2.5sin^2 - 2)
+
+% Convert analytical rates to [deg/s]
+dOmega_dt_anal_deg = rad2deg(dOmega_dt_anal);
+domega_dt_anal_deg = rad2deg(domega_dt_anal);
+
+% Numerical Rates from Filtered Data [deg/s]
+% use degree 1 polyfit on the filtered data to extract the slope.
+coeffs_Omega = polyfit(T, Y_gauss_filtered(:, 4), 1);
+dOmega_dt_num_deg = coeffs_Omega(1);
+
+coeffs_omega = polyfit(T, Y_gauss_filtered(:, 5), 1);
+domega_dt_num_deg = coeffs_omega(1);
+
+% Display comparison
+fprintf("--- Secular Evolution Comparison (J2) ---\n");
+fprintf("RAAN (Omega) Rate [deg/s]:\n");
+fprintf("  Analytical: %.5e\n", dOmega_dt_anal_deg);
+fprintf("  Numerical:  %.5e\n", dOmega_dt_num_deg);
+fprintf("  Rel Error:  %.2f %%\n", abs((dOmega_dt_anal_deg - dOmega_dt_num_deg)/dOmega_dt_anal_deg)*100);
+fprintf("\n");
+fprintf("Arg of Perigee (omega) Rate [deg/s]:\n");
+fprintf("  Analytical: %.5e\n", domega_dt_anal_deg);
+fprintf("  Numerical:  %.5e\n", domega_dt_num_deg);
+fprintf("  Rel Error:  %.2f %%\n", abs((domega_dt_anal_deg - domega_dt_num_deg)/domega_dt_anal_deg)*100);
