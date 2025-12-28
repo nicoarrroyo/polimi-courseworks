@@ -47,3 +47,4 @@ function [dv1, dv2] = constrained_transfer_cost(...
        dv1 = NaN; dv2 = NaN;
     end
 end
+
