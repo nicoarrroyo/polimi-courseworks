@@ -25,9 +25,9 @@ planet_dep.id = 1;
 planet_dep.mu = astroConstants(10 + planet_dep.id);
 
 % --- Flyby Planet ---
-planet_ganame = "Earth";
-planet_gaid = 3;
-planet_gamu = astroConstants(10 + planet_gaid);
+planet_ga.name = "Earth";
+planet_ga.id = 3;
+planet_ga.mu = astroConstants(10 + planet_ga.id);
 
 % --- Arrival Asteroid ---
 asteroid_arr.id = 316801;
@@ -46,7 +46,7 @@ asteroid_arr.name = "N." + asteroid_arr.id;
 %% 2. Evaluate Δ𝑣tot for a grid of departure and arrival times covering ...
 % the time windows provided for the Mercury-Earth leg.
 % --- create array of departure and arrival times ---
-leg1.dep_id = planet_dep.id; leg1.arr_id = planet_gaid;
+leg1.dep_id = planet_dep.id; leg1.arr_id = planet_ga.id;
 leg1.early_dept_mjd2000 = travel_window.start_mjd2k;
 leg1.early_arr_mjd2000 = travel_window.start_mjd2k;
 leg1.late_dept_mjd2000 = travel_window.end_mjd2k;
@@ -245,21 +245,21 @@ fprintf("Total ToF (days):    %.2f\n", leg2.tof_opt_grid);
 
 %% 5. Plot the transfer trajectory for this mission
 % --- set up times and options ---
-t1 = mjd_opt_dep_grid * 24 * 3600; % departure second
-t2 = mjd_opt_arr_grid * 24 * 3600; % arrival second
-tof = tof_days_opt_grid * 24 * 3600; % time of flight in seconds
+mjd2k1 = date2mjd2000([2031 7 15 9 41 49]);
+mjd2k2 = date2mjd2000([2032 6 15 9 41 49]);
+t1 = mjd2k1 * 24 * 3600;
+t2 = mjd2k2 * 24 * 3600;
+% tof = t2 - t1;
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
+AU = astroConstants(2);
 
 % --- get planet and asteroid positions ---
-[RD1, VD1] = get_planet_state(mjd_opt_dep_grid, planet_dep.id, mu_sun);
-[RGA1, VGA1] = get_planet_state(mjd_opt_dep_grid, planet_ga.id, mu_sun);
-[RA1, VA1] = get_asteroid_state(mjd_opt_dep_grid, asteroid_arr.id, mu_sun);
+[RD1, VD1] = get_planet_state(mjd2k1, planet_dep.id, mu_sun);
+[RGA1, VGA1] = get_planet_state(mjd2k1, planet_ga.id, mu_sun);
+[RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_arr.id, mu_sun);
 
-[RD2, VD2] = get_planet_state(mjd_opt_arr_grid, planet_dep.id, mu_sun);
-[RGA2, VGA2] = get_planet_state(mjd_opt_arr_grid, planet_ga.id, mu_sun);
-
-[~, ~, ~, ~, V_transfer1, V_transfer2, ~, ~] = ...
-    lambertMR( RD1, RGA2, tof, mu_sun, 0, 0, 0, 0 );
+% [~, ~, ~, ~, V_transfer1, V_transfer2, ~, ~] = ...
+%     lambertMR( RD1, RGA2, tof, mu_sun, 0, 0, 0, 0 );
 
 % a. propagate the transfer arcs
 % y_transfer = [RD1 V_transfer1]; % transfer arc initial state vector
@@ -281,29 +281,27 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % c. propagate the departure planet orbit
 y_D = [RD1, VD1];
-a_D = 1 / (2 / norm(RD1) - dot(VD1, VD1) / mu_sun); % semi major axis [km]
-T_D = 2*pi * sqrt(a_D^3 / mu_sun); % orbital period [s]
 tspan_D = linspace(t1, t2); % integration time span array
-
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_D, y_D, options);
-R_D = Y(:, 1:3);
-V_D = Y(:, 4:6);
+R_D = Y(:, 1:3) ./ AU;
 
-% d. propagate the arrival planet orbit
-y_A = [RGA1, VGA1];
-a_A = 1 / (2 / norm(RGA1) - dot(VGA1, VGA1) / mu_sun); % semi major axis [km]
-T_A = 2*pi * sqrt(a_A^3 / mu_sun); % orbital period [s]
+% d. propagate the gravity-assist planet orbit
+y_GA = [RGA1, VGA1];
+tspan_GA = linspace(t1, t2); % integration time span array
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_GA, y_GA, options);
+R_GA = Y(:, 1:3) ./ AU;
+
+% e. propagate the arrival asteroid orbit
+y_A = [RA1, VA1];
 tspan_A = linspace(t1, t2); % integration time span array
-
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_A, y_A, options);
-R_A = Y(:, 1:3);
-V_A = Y(:, 4:6);
+R_A = Y(:, 1:3) ./ AU;
 
 % --- plot ---
-figure("Name", "Orbit Plot");
+figure("Name", "Orbit Plot"); hold on;
 
 % a. transfer arcs
-%plot3(R_transfer1(:, 1), R_transfer1(:, 2), R_transfer1(:, 3), "y"); hold on;
+%plot3(R_transfer1(:, 1), R_transfer1(:, 2), R_transfer1(:, 3), "y");
 %plot3(R_transfer2(:, 1), R_transfer2(:, 2), R_transfer2(:, 3), "y");
 
 % b. unused segment of transfer arcs
@@ -314,36 +312,49 @@ figure("Name", "Orbit Plot");
 plot3(R_D(:, 1), R_D(:, 2), R_D(:, 3), "r"); % during transfer
 
 % d. gravity-assist planet orbit
-plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "g"); % during transfer
+plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "g"); % during transfer
 
 % e. asteroid orbit
-%plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "g"); % during transfer
+plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b"); % during transfer
 
 % f. departure planet boundary positions
 scatter3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "filled", "MarkerFaceColor", "r");
 scatter3(R_D(end, 1), R_D(end, 2), R_D(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
 
 % g. gravity-assist planet boundary positions
-scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "filled", "MarkerFaceColor", "g");
-scatter3(R_A(end, 1), R_A(end, 2), R_A(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
+scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "filled", "MarkerFaceColor", "g");
+scatter3(R_GA(end, 1), R_GA(end, 2), R_GA(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
 
 % h. asteroid boundary positions
+scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "filled", "MarkerFaceColor", "b");
+scatter3(R_A(end, 1), R_A(end, 2), R_A(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "b");
 
 % i. sun position
 scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
 
 % --- plot properties ---
-xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+xlabel("X [AU]"); ylabel("Y [AU]"); zlabel("Z [AU]");
 title("Two-body problem orbit");
-legend(...
-    "transfer arc", ...
-    ..."unused transfer arc segment", ...
+% legend(...
+%     "transfer arc", ...
+%     ..."unused transfer arc segment", ...
+%     "", ...
+%     "", ...
+%     "departure planet at departure", ...
+%     "departure planet at arrival", ...
+%     "arrival planet at arrival", ...
+%     "arrival planet at departure", ...
+%     "");
+legend( ...
+    "", ...
     "", ...
     "", ...
     "departure planet at departure", ...
     "departure planet at arrival", ...
-    "arrival planet at arrival", ...
-    "arrival planet at departure", ...
+    "ga planet at departure", ...
+    "ga planet at arrival", ...
+    "asteroid at departure", ...
+    "asteroid at arrival", ...
     "");
 axis equal; grid on;
 hold off;
