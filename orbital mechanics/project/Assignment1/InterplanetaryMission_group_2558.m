@@ -83,33 +83,17 @@ for i = 1:steps
     tof_row = NaN(1, steps);
     for j = 1:steps
         t2 = leg1.arr_times(j) * 24 * 3600;
-        leg1.tof = t2 - t1;
+        tof = t2 - t1;
         
-        if leg1.tof > 0
-            R2 = leg1.R_arr_list(j, :);
-            V2 = leg1.V_arr_list(j, :);
+        if tof > 0
+            R3 = leg1.R_arr_list(j, :);
+            V3 = leg1.V_arr_list(j, :);
 
-            [~, ~, ~, leg1.ERROR, v_t1, v_t2, ~, ~] = ...
-                lambertMR(R1, R2, tof, mu_sun, 0, 0, 0, 0);
+            [~, ~, ~, leg1.ERROR, V2, v_t2, ~, ~] = ...
+                lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
             if leg1.ERROR == 0
-                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V2);
+                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V3);
                 tof_row(j) = t2 - t1;
-                
-                for k = 1:steps
-                    t3 = leg2.arr_times(k) * 24 * 3600;
-                    leg2.tof = t3 - t2;
-
-                    if leg2.tof > 0
-                        R3 = leg2.R_arr_list(k, :);
-                        V3 = leg2.V_arr_list(k, :);
-
-                        [~, ~, ~, leg2.ERROR, v_t3, v_t4, ~, ~] = ...
-                            lambertMR(R2, R3, tof, mu_sun, 0, 0, 0, 0);
-                        
-                        if leg2.ERROR == 0
-                            leg2.dv_row(j, k) = norm(v_t3 - V3) + norm(v_t4 - V); %TEMPORARY!
-                    end
-                end
             end
         end
     end
@@ -117,6 +101,12 @@ for i = 1:steps
     leg1.tof(i, :) = tof_row / (24 * 3600);
 end
 disp("complete!"); toc
+
+%% 3. Calculate the 
+
+
+%% 4. Evaluate dvtot for a grid of departure and arrival times covering ...
+% the time windows provided for the Earth-Asteroid leg
 
 %% 3. Draw the porkchop plot of the Mercury-Earth Leg
 figure("Name", "Mercury-Earth Leg Porkchop Plot"); hold on; grid on; axis equal;
