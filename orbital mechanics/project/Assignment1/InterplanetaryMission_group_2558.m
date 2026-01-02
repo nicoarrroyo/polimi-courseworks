@@ -288,16 +288,16 @@ plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "g"); % during transfer
 plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b"); % during transfer
 
 % f. departure planet boundary positions
-scatter3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "filled", "MarkerFaceColor", "r");
-scatter3(R_D(end, 1), R_D(end, 2), R_D(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
+scatter3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "none", "MarkerFaceColor", "r");
+scatter3(R_D(end, 1), R_D(end, 2), R_D(end, 3), "MarkerFaceColor", "filled", "MarkerEdgeColor", "r");
 
 % g. gravity-assist planet boundary positions
-scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "filled", "MarkerFaceColor", "g");
-scatter3(R_GA(end, 1), R_GA(end, 2), R_GA(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
+scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "none", "MarkerFaceColor", "g");
+scatter3(R_GA(end, 1), R_GA(end, 2), R_GA(end, 3), "MarkerFaceColor", "filled", "MarkerEdgeColor", "g");
 
 % h. asteroid boundary positions
-scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "filled", "MarkerFaceColor", "b");
-scatter3(R_A(end, 1), R_A(end, 2), R_A(end, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "b");
+scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "none", "MarkerFaceColor", "b");
+scatter3(R_A(end, 1), R_A(end, 2), R_A(end, 3), "MarkerFaceColor", "filled", "MarkerEdgeColor", "b");
 
 % i. sun position
 scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
@@ -322,6 +322,7 @@ hold off;
 %% animated plot
 
 % 1. Define orbital data
+t = linspace(t1, t2);
 x = R_D(:, 1); x2 = R_GA(:, 1); x3 = R_A(:, 1);
 y = R_D(:, 2); y2 = R_GA(:, 2); y3 = R_A(:, 2);
 z = R_D(:, 3); z2 = R_GA(:, 3); z3 = R_A(:, 3);
@@ -332,6 +333,7 @@ xlim([-max([max(abs(x)), max(abs(x2)), max(abs(x3))]), max([max(abs(x)), max(abs
 ylim([-max([max(abs(y)), max(abs(y2)), max(abs(y3))]), max([max(abs(y)), max(abs(y2)), max(abs(y3))])])
 zlim([-max([max(abs(z)), max(abs(z2)), max(abs(z3))]), max([max(abs(z)), max(abs(z2)), max(abs(z3))])])
 title("Simultaneous Multi-Orbit Animation");
+scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
 
 % 3. Create animated lines
 h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
@@ -355,41 +357,5 @@ for i = 1:length(t)
     set(head2, "XData", x2(i), "YData", y2(i), "ZData", z2(i));
     set(head3, "XData", x3(i), "YData", y3(i), "ZData", z3(i));
     
-    drawnow limitrate; pause(0.01); 
+    drawnow limitrate; pause(0.05); 
 end
-
-% % 2. Initialise the plot
-% figure("Name", "Animated Plot"); hold on; grid on; view(3); axis equal;
-% title("Simultaneous Multi-Orbit Animation");
-% scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
-% xlim([-max([max(abs(R_D(:, 1))), max(abs(R_GA(:, 1)), max(abs(R_A(:, 1))))]), ...
-%     max([max(abs(R_D(:, 1))), max(abs(R_GA(:, 1)), max(abs(R_A(:, 1))))])])
-% ylim([-max([max(abs(R_D(:, 2))), max(abs(R_GA(:, 2)), max(abs(R_A(:, 2))))]), ...
-%     max([max(abs(R_D(:, 2))), max(abs(R_GA(:, 2)), max(abs(R_A(:, 2))))])])
-% zlim([-max([max(abs(R_D(:, 3))), max(abs(R_GA(:, 3)), max(abs(R_A(:, 3))))]), ...
-%     max([max(abs(R_D(:, 3))), max(abs(R_GA(:, 3)), max(abs(R_A(:, 3))))])])
-% 
-% % 3. Create animated lines
-% h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
-% h2 = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
-% h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
-% 
-% % 4. Add markers for the "heads" of the comets
-% head1 = plot3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "ro", "MarkerFaceColor", "r");
-% head2 = plot3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "go", "MarkerFaceColor", "g");
-% head3 = plot3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "bo", "MarkerFaceColor", "b");
-% 
-% % 5. Animation loop
-% for i = 1:length(t)
-%     % Update the tails
-%     addpoints(h1, R_D(i, 1), R_D(i, 2), R_D(i, 3));
-%     addpoints(h2, R_GA(i, 1), R_GA(i, 2), R_GA(i, 3));
-%     addpoints(h3, R_A(i, 1), R_A(i, 2), R_A(i, 3));
-% 
-%     % Update the heads
-%     set(head1, "XData", R_D(i, 1), "YData", R_D(i, 2), "ZData", R_D(i, 3));
-%     set(head2, "XData", R_GA(i, 1), "YData", R_GA(i, 2), "ZData", R_GA(i, 3));
-%     set(head3, "XData", R_A(i, 1), "YData", R_A(i, 2), "ZData", R_A(i, 3));
-% 
-%     drawnow limitrate; pause(0.01); 
-% end
