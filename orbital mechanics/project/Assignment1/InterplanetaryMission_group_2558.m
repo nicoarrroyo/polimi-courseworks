@@ -4,10 +4,54 @@ proj_d = cd(1:backs(end)); addpath([proj_d '\student_functions']);
 addpath([proj_d '\lib']); addpath([proj_d '\lib' '\timeConversion']);
 clear; close all; clc;
 
-%% ============= %%
-%% === LEG 1 === %%
-%% ============= %%
-%% --- Mission Requirements ---
+            %% === STATE 1/6: MERCURY === %%
+% The satellite is at Mercury, with its state matching Mercury's state. The
+% satellite's heliocentric position and velocity is the same as Mercury's
+% heliocentric position and velocity. The satellite's planet-centric 
+% (wrt Mercury) position is on its surface and its velocity is 0 
+% (DOUBLE CHECK THIS).
+
+            %% === MANOUVRE 1/3: DEPARTURE === %%
+% PLACEHOLDER
+
+            %% === STATE 2/6: MERCURY DEPARTURE === %%
+% The satellite is still at Mercury, but now its velocity is changed such
+% that it will reach Earth at some point in the future (calculated for an 
+% array of times). The satellite's heliocentric position is still the same
+% as Mercury's but the its velocity is V2, the velocity given by Lambert's
+% algorithm to reach Earth. The satellite's planet-centric position is
+% still on its surface, and its velocity is technically v_p_plus, but it is
+% irrelevant for any calculations. 
+
+            %% === STATE 3/6: EARTH ARRIVAL === %%
+% The satellite has now reached Earth and it has some excess velocity as it
+% enters Earth's sphere of influence. The satellite's heliocentric
+% position is technically the position of Earth with the size of Earth's
+% sphere of influence subtracted, but this can be approximated as the
+% satellite simply being at Earth's same point in the heliocentric frame.
+% The heliocentric velocity is given as the second output from the Lambert
+% algorithm carried out from Mercury, V3. This velocity will direct the
+% satellite towards some random place in space, which is why the powered
+% gravity assist is necessary. 
+
+            %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
+% PLACEHOLDER
+
+            %% === STATE 4/6: EARTH DEPARTURE === %%
+% PLACEHOLDER
+
+            %% === STATE 5/6: ASTEROID ARRIVAL === %%
+% PLACEHOLDER
+
+            %% === MANOUVRE 3/3: ORBIT MATCHING === %%
+
+            %% === STATE 6/6: ASTEROID ORBIT MATCHING === %%
+% PLACEHOLDER
+
+                        %% ============= %%
+                        %% === LEG 1 === %%
+                        %% ============= %%
+%% 1. Initialisation
 % --- Constants ---
 steps = 100; mu_sun = astroConstants(4);
 
@@ -149,9 +193,9 @@ fprintf("Arrival:     MJD2000 %.2f\n", leg1.mjd_opt_arr_grid);
 fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", leg1.date_a);
 fprintf("Total ToF (days):    %.2f\n", leg1.tof_opt_grid);
 
-%% ============= %%
-%% === LEG 2 === %%
-%% ============= %%
+                        %% ============= %%
+                        %% === LEG 2 === %%
+                        %% ============= %%
 %% 2. Evaluate Δ𝑣tot for a grid of departure and arrival times covering ...
 % the time windows provided for the Earth-asteroid leg.
 % --- create array of departure and arrival times ---
