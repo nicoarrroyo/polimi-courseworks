@@ -2,6 +2,8 @@ function [V1_list, V2_list, dv_array, tof_array] = ...
     deep_space_injection(R_dep_list, V_dep_list, R_arr_list, ...
     V_arr_list, dep_times, arr_times, steps, full_lambert)
 
+mu_sun = astroConstants(4);
+
 V1_list = zeros(steps, 3);
 V2_list = zeros(steps, 3);
 dv_array = NaN(steps, steps);
@@ -31,9 +33,9 @@ for i = 1:steps
 
                 if full_lambert ~= 0 % if aiming for rendez-vous
                     V2 = V_arr_list(j, :);
-                    dv_array(j) = norm(V1_temp - V1) + norm(V2_temp - V2);
+                    dv_row(j) = norm(V1_temp - V1) + norm(V2_temp - V2);
                 else % if aiming for only gravity assist
-                    dv_array(j) = norm(V1_temp - V1);
+                    dv_row(j) = norm(V1_temp - V1);
                 end
             end
         end
