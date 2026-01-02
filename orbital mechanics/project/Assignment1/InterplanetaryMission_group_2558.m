@@ -8,13 +8,16 @@ clear; close all; clc;
 % The satellite is at Mercury, with its state matching Mercury's state. The
 % satellite's heliocentric position and velocity is the same as Mercury's
 % heliocentric position and velocity. The satellite's planet-centric 
-% (wrt Mercury) position is on its surface and its velocity is 0 
-% (DOUBLE CHECK THIS).
+% (wrt Mercury) position is on Mercury's surface and its velocity is 0.
 
             %% === MANOUVRE 1/3: DEPARTURE === %%
-% PLACEHOLDER
+% Lambert algorithm to solve for the manouvre which transfers the satellite
+% from Mercury to Earth. This is done for every departure time to every
+% arrival time, discarding the combinations where arrival time is before
+% departure time of course. 
 
             %% === STATE 2/6: MERCURY DEPARTURE === %%
+            %  --- START OF LEG 1 --- %
 % The satellite is still at Mercury, but now its velocity is changed such
 % that it will reach Earth at some point in the future (calculated for an 
 % array of times). The satellite's heliocentric position is still the same
@@ -24,6 +27,8 @@ clear; close all; clc;
 % irrelevant for any calculations. 
 
             %% === STATE 3/6: EARTH ARRIVAL === %%
+            % R3 ~= RE3, V3 = 
+            % RE3, VE3 known
 % The satellite has now reached Earth and it has some excess velocity as it
 % enters Earth's sphere of influence. The satellite's heliocentric
 % position is technically the position of Earth with the size of Earth's
@@ -38,7 +43,18 @@ clear; close all; clc;
 % PLACEHOLDER
 
             %% === STATE 4/6: EARTH DEPARTURE === %%
-% PLACEHOLDER
+            %  --- START OF LEG 2 --- %
+            % R4 ~= RE4, V4 = VE4 + v_inf_2_plus
+            % RE4 ~= RE3, VE4 ~= VE3
+% The satellite is still technically in Earth's sphere of influence, but is
+% exiting it. The heliocentric position is, again, roughly approximated as
+% being equal to the Earth's heliocentric position, and the satellite's
+% heliocentric velocity is the sum of the Earth's heliocentric velocity and
+% the satellite's planet-centric velocity at the exit of Earth's sphere of
+% influence. The satellite's planet-centric position is strictly at the
+% boundary of the Earth's sphere of influence but is not relevant for any
+% calculation whereas the satellite's planet-centric velocity is its
+% velocity at the exit of Earth's sphere of influence (v_inf_2_plus).
 
             %% === STATE 5/6: ASTEROID ARRIVAL === %%
 % PLACEHOLDER
@@ -46,6 +62,7 @@ clear; close all; clc;
             %% === MANOUVRE 3/3: ORBIT MATCHING === %%
 
             %% === STATE 6/6: ASTEROID ORBIT MATCHING === %%
+            %  --- START OF LEG 3 --- %
 % PLACEHOLDER
 
                         %% ============= %%
