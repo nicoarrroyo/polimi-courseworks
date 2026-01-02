@@ -4,7 +4,38 @@ proj_d = cd(1:backs(end)); addpath([proj_d '\student_functions']);
 addpath([proj_d '\lib']); addpath([proj_d '\lib' '\timeConversion']);
 clear; close all; clc;
 
+                        %% ============= %%
+                        %% === LEG 1 === %%
+                        %% ============= %%
+%% 1. Initialisation
+% --- Constants ---
+steps = 100; mu_sun = astroConstants(4);
+
+% --- Travel Window ---
+travel_window.start_date = [2030, 1, 1, 0, 0, 0];
+travel_window.end_date = [2032, 1, 1, 0, 0, 0];
+travel_window.start_mjd2k = date2mjd2000(travel_window.start_date);
+travel_window.end_mjd2k = date2mjd2000(travel_window.end_date);
+
+travel_window.tof = travel_window.start_date - travel_window.end_date;
+
+% --- Departure Planet ---
+planet_mercury.name = "Mercury";
+planet_mercury.id = 1;
+planet_mercury.mu = astroConstants(10 + planet_mercury.id);
+
+% --- Flyby Planet ---
+planet_earth.name = "Earth";
+planet_earth.id = 3;
+planet_earth.mu = astroConstants(10 + planet_earth.id);
+
+% --- Arrival Asteroid ---
+asteroid.id = 316801;
+asteroid.name = "N." + asteroid.id;
+
             %% === STATE 1/6: MERCURY === %%
+            % R1 = RM1, V1 = VM1
+            % RM1, VM1 known
 % The satellite is at Mercury, with its state matching Mercury's state. The
 % satellite's heliocentric position and velocity is the same as Mercury's
 % heliocentric position and velocity. The satellite's planet-centric 
@@ -27,7 +58,7 @@ clear; close all; clc;
 % irrelevant for any calculations. 
 
             %% === STATE 3/6: EARTH ARRIVAL === %%
-            % R3 ~= RE3, V3 = 
+            % R3 ~= RE3, V3 = V_E - v_inf_2_minus
             % RE3, VE3 known
 % The satellite has now reached Earth and it has some excess velocity as it
 % enters Earth's sphere of influence. The satellite's heliocentric
@@ -65,49 +96,94 @@ clear; close all; clc;
             %  --- START OF LEG 3 --- %
 % PLACEHOLDER
 
-                        %% ============= %%
-                        %% === LEG 1 === %%
-                        %% ============= %%
-%% 1. Initialisation
-% --- Constants ---
-steps = 100; mu_sun = astroConstants(4);
+            %% === STATE 1/6: MERCURY === %%
+% --- Define early/late departure/arrival times ---
+leg1.early_dept_mjd2000 = travel_window.start_mjd2k;
+leg1.early_arr_mjd2000 = travel_window.start_mjd2k;
+leg1.late_dept_mjd2000 = travel_window.end_mjd2k;
+leg1.late_arr_mjd2000 = travel_window.end_mjd2k;
 
-% --- Travel Window ---
-travel_window.start_date = [2030, 1, 1, 0, 0, 0];
-travel_window.end_date = [2032, 1, 1, 0, 0, 0];
-travel_window.start_mjd2k = date2mjd2000(travel_window.start_date);
-travel_window.end_mjd2k = date2mjd2000(travel_window.end_date);
+% --- Initialise Mercury state array ---
+leg1.RM_list = zeros(steps, 3);
+leg1.VM_list = zeros(steps, 3);
 
-travel_window.tof = travel_window.start_date - travel_window.end_date;
+% --- Fill Mercury state array ---
+for i = 1:steps
+    [leg1.RM_list(i, :), leg1.VM_list(i, :)] = ...
+        get_planet_state(leg1.dep_times(i), planet_mercury.id, mu_sun);
+end
 
-% --- Departure Planet ---
-planet_dep.name = "Mercury";
-planet_dep.id = 1;
-planet_dep.mu = astroConstants(10 + planet_dep.id);
+            %% === MANOUVRE 1/3: DEPARTURE === %%
+% --- Initialise array for Mercury departure state ---
+leg1.R2_list = zeros(steps, 3);
+leg1.V2_list = zeros(steps, 3);
 
-% --- Flyby Planet ---
-planet_ga.name = "Earth";
-planet_ga.id = 3;
-planet_ga.mu = astroConstants(10 + planet_ga.id);
+% --- Initialise Earth state array ---
+leg1.RE_list = zeros(steps, 3);
+leg1.VE_list = zeros(steps, 3);
 
-% --- Arrival Asteroid ---
-asteroid_arr.id = 316801;
-asteroid_arr.name = "N." + asteroid_arr.id;
-[...
-    asteroid_arr.kep1, ...
-    asteroid_arr.mass, ...
-    asteroid_arr.M1...
-    ] = ephAsteroids(travel_window.start_mjd2k, asteroid_arr.id);
-[...
-    asteroid_arr.kep2, ...
-    ~, ...
-    asteroid_arr.M2...
-    ] = ephAsteroids(travel_window.end_mjd2k, asteroid_arr.id);
+% --- Set up time array for first leg ---
+leg1.dep_times = linspace(leg1.early_dept_mjd2000, leg1.late_dept_mjd2000, steps);
+leg1.arr_times = linspace(leg1.early_arr_mjd2000, leg1.late_arr_mjd2000, steps);
+
+% --- Fill Earth state array ---
+for i = 1:steps
+    [leg1.RE_list(i, :), leg1.VE_list(i, :)] = ...
+        get_planet_state(leg1.arr_times(i), planet_earth.id, mu_sun);
+end
+
+% --- Conduct grid search ---
+leg1.dvtot = NaN(steps, steps);
+leg1.tof = NaN(steps, steps);
+leg1.v_inf_minus = NaN(steps, steps);
+leg1.v_inf_plus = NaN(steps, steps);
+disp("conducting grid search 1"); tic
+for i = 1:steps
+    R1 = leg1.R_dep_list(i, :);
+    V1 = leg1.V_dep_list(i, :);
+    t1 = leg1.dep_times(i) * 24 * 3600;
+
+    dv_row = NaN(1, steps);
+    tof_row = NaN(1, steps);
+    for j = 1:steps
+        t2 = leg1.arr_times(j) * 24 * 3600;
+        tof = t2 - t1;
+        
+        if tof > 0
+            R3 = leg1.R_arr_list(j, :);
+            V3 = leg1.V_arr_list(j, :);
+
+            [~, ~, ~, leg1.ERROR, V2, v_t2, ~, ~] = ...
+                lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
+            if leg1.ERROR == 0
+                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V3);
+                tof_row(j) = t2 - t1;
+            end
+        end
+    end
+    leg1.dvtot(i, :) = dv_row;
+    leg1.tof(i, :) = tof_row / (24 * 3600);
+end
+disp("complete!"); toc
+
+            %% === STATE 2/6: MERCURY DEPARTURE === %%
+
+            %% === STATE 3/6: EARTH ARRIVAL === %%
+
+            %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
+
+            %% === STATE 4/6: EARTH DEPARTURE === %%
+
+            %% === STATE 5/6: ASTEROID ARRIVAL === %%
+
+            %% === MANOUVRE 3/3: ORBIT MATCHING === %%
+
+            %% === STATE 6/6: ASTEROID ORBIT MATCHING === %%
 
 %% 2. Evaluate Δ𝑣tot for a grid of departure and arrival times covering ...
 % the time windows provided for the Mercury-Earth leg.
 % --- create array of departure and arrival times ---
-leg1.dep_id = planet_dep.id; leg1.arr_id = planet_ga.id;
+leg1.dep_id = planet_mercury.id; leg1.arr_id = planet_earth.id;
 leg1.early_dept_mjd2000 = travel_window.start_mjd2k;
 leg1.early_arr_mjd2000 = travel_window.start_mjd2k;
 leg1.late_dept_mjd2000 = travel_window.end_mjd2k;
@@ -320,9 +396,9 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 AU = astroConstants(2);
 
 % --- get planet and asteroid positions ---
-[RD1, VD1] = get_planet_state(mjd2k1, planet_dep.id, mu_sun);
-[RGA1, VGA1] = get_planet_state(mjd2k1, planet_ga.id, mu_sun);
-[RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_arr.id, mu_sun);
+[RD1, VD1] = get_planet_state(mjd2k1, planet_mercury.id, mu_sun);
+[RGA1, VGA1] = get_planet_state(mjd2k1, planet_earth.id, mu_sun);
+[RA1, VA1] = get_asteroid_state(mjd2k1, asteroid.id, mu_sun);
 
 % c. propagate the departure planet orbit
 y_D = [RD1, VD1];
