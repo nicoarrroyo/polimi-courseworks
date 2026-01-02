@@ -1,4 +1,4 @@
-function [r, v] = get_asteroid_state(mjd2000, body_id, mu)
+function [r, v] = get_asteroid_state(mjd2000, body_id)
 % GET_PLANET_STATE Get position and velocity of a planet
 %
 % Inputs:
@@ -11,6 +11,8 @@ function [r, v] = get_asteroid_state(mjd2000, body_id, mu)
 %   v - Velocity vector [km s^-1] (column vector)
 
     [kep, ~, ~] = ephAsteroids(mjd2000, body_id);
+
+    mu = astroConstants(4);
 
     [r, v] = kep2car(...
         kep(1), ...  % Semi-major axis
