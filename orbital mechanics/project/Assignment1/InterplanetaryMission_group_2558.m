@@ -98,9 +98,9 @@ asteroid.name = "N." + asteroid.id;
 
             %% === STATE 1/6: MERCURY === %%
 % --- Define early/late departure/arrival times ---
-leg1.early_dept_mjd2000 = travel_window.start_mjd2k;
+leg1.early_dep_mjd2000 = travel_window.start_mjd2k;
 leg1.early_arr_mjd2000 = travel_window.start_mjd2k;
-leg1.late_dept_mjd2000 = travel_window.end_mjd2k;
+leg1.late_dep_mjd2000 = travel_window.end_mjd2k;
 leg1.late_arr_mjd2000 = travel_window.end_mjd2k;
 
 % --- Initialise Mercury state array ---
@@ -115,36 +115,33 @@ end
 
             %% === MANOUVRE 1/3: DEPARTURE === %%
 % --- Initialise array for Mercury departure state ---
-leg1.R2_list = zeros(steps, 3);
-leg1.V2_list = zeros(steps, 3);
+R2_list = zeros(steps, 3);
+V2_list = zeros(steps, 3);
 
 % --- Initialise Earth state array ---
-leg1.RE_list = zeros(steps, 3);
-leg1.VE_list = zeros(steps, 3);
+RE_list = zeros(steps, 3);
+VE_list = zeros(steps, 3);
 
 % --- Set up time array for first leg ---
-leg1.dep_times = linspace(leg1.early_dept_mjd2000, leg1.late_dept_mjd2000, steps);
+leg1.dep_times = linspace(leg1.early_dep_mjd2000, leg1.late_dep_mjd2000, steps);
 leg1.arr_times = linspace(leg1.early_arr_mjd2000, leg1.late_arr_mjd2000, steps);
 
 % --- Fill Earth state array ---
 for i = 1:steps
-    [leg1.RE_list(i, :), leg1.VE_list(i, :)] = ...
+    [RE_list(i, :), VE_list(i, :)] = ...
         get_planet_state(leg1.arr_times(i), planet_earth.id, mu_sun);
 end
 
-% --- Initialise delta-v and ToF arrays ---
+% --- Initialise arrival V, delta-v, and ToF arrays ---
 leg1.dvtot = NaN(steps, steps);
 leg1.tof = NaN(steps, steps);
-
-% --- Initialise geocentric arrival velocity arrays ---
-leg1.v_inf_2_minus = NaN(steps, steps); % relevant for manouvre 2
-leg1.v_inf_2_plus = NaN(steps, steps); % relevant for manouvre 2 SO WHY ARE YOU DOING IT HERE??!?!?!?
+V3_list = zeros(steps, 3); % satellite at earth arrival
 
 % --- Conduct leg 1 grid search ---
 disp("conducting grid search 1"); tic
 for i = 1:steps
-    R1 = leg1.R_dep_list(i, :);
-    V1 = leg1.V_dep_list(i, :);
+    R1 = RM_list(i, :);
+    V1 = VM_list(i, :);
     t1 = leg1.dep_times(i) * 24 * 3600;
 
     dv_row = NaN(1, steps);
@@ -154,14 +151,17 @@ for i = 1:steps
         tof = t2 - t1;
         
         if tof > 0
-            R3 = leg1.R_arr_list(j, :);
-            V3 = leg1.V_arr_list(j, :);
+            R3 = RE_list(j, :);
+            V3 = VE_list(j, :);
 
-            [~, ~, ~, leg1.ERROR, V2, v_t2, ~, ~] = ...
+            [~, ~, ~, leg1.ERROR, V2_temp, V3_temp, ~, ~] = ...
                 lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
             if leg1.ERROR == 0
-                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V3);
+                dv_row(j) = norm(V2_temp - V1); %+ norm(V3_temp - V3);
                 tof_row(j) = t2 - t1;
+
+                V2_list(j, :) = V2_temp;
+                V3_list(j, :) = V3_temp;
             end
         end
     end
@@ -175,6 +175,9 @@ disp("complete!"); toc
             %% === STATE 3/6: EARTH ARRIVAL === %%
 
             %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
+% --- Initialise geocentric arrival velocity arrays ---
+leg1.v_inf_2_minus = NaN(steps, steps);
+leg1.v_inf_2_plus = NaN(steps, steps);
 
             %% === STATE 4/6: EARTH DEPARTURE === %%
 
@@ -188,12 +191,12 @@ disp("complete!"); toc
 % the time windows provided for the Mercury-Earth leg.
 % --- create array of departure and arrival times ---
 leg1.dep_id = planet_mercury.id; leg1.arr_id = planet_earth.id;
-leg1.early_dept_mjd2000 = travel_window.start_mjd2k;
+leg1.early_dep_mjd2000 = travel_window.start_mjd2k;
 leg1.early_arr_mjd2000 = travel_window.start_mjd2k;
-leg1.late_dept_mjd2000 = travel_window.end_mjd2k;
+leg1.late_dep_mjd2000 = travel_window.end_mjd2k;
 leg1.late_arr_mjd2000 = travel_window.end_mjd2k;
 
-leg1.dep_times = linspace(leg1.early_dept_mjd2000, leg1.late_dept_mjd2000, steps);
+leg1.dep_times = linspace(leg1.early_dep_mjd2000, leg1.late_dep_mjd2000, steps);
 leg1.arr_times = linspace(leg1.early_arr_mjd2000, leg1.late_arr_mjd2000, steps);
 
 % --- pre-calculate planet and asteroid states ---
@@ -228,12 +231,12 @@ for i = 1:steps
         
         if tof > 0
             R3 = leg1.R_arr_list(j, :);
-            V3 = leg1.V_arr_list(j, :);
+            V3_list = leg1.V_arr_list(j, :);
 
-            [~, ~, ~, leg1.ERROR, V2, v_t2, ~, ~] = ...
+            [~, ~, ~, leg1.ERROR, V2_list, v_t2, ~, ~] = ...
                 lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
             if leg1.ERROR == 0
-                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V3);
+                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V3_list);
                 tof_row(j) = t2 - t1;
             end
         end
