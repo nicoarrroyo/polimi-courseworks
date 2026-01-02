@@ -104,20 +104,21 @@ leg1.late_dep_mjd2000 = travel_window.end_mjd2k;
 leg1.late_arr_mjd2000 = travel_window.end_mjd2k;
 
 % --- Initialise Mercury state array ---
-leg1.RM_list = zeros(steps, 3);
-leg1.VM_list = zeros(steps, 3);
+RM_list = zeros(steps, 3);
+VM_list = zeros(steps, 3);
 
 % --- Fill Mercury state array ---
 for i = 1:steps
-    [leg1.RM_list(i, :), leg1.VM_list(i, :)] = ...
+    [RM_list(i, :), VM_list(i, :)] = ...
         get_planet_state(leg1.dep_times(i), planet_mercury.id, mu_sun);
 end
 
-            %% === MANOUVRE 1/3: DEPARTURE === %%
+            %% === STATE 2/6: MERCURY DEPARTURE === %%
 % --- Initialise array for Mercury departure state ---
 R2_list = zeros(steps, 3);
 V2_list = zeros(steps, 3);
 
+            %% === MANOUVRE 1/3: DEPARTURE === %%
 % --- Initialise Earth state array ---
 RE_list = zeros(steps, 3);
 VE_list = zeros(steps, 3);
@@ -139,6 +140,55 @@ V3_list = zeros(steps, 3); % satellite at earth arrival
 
 % --- Conduct leg 1 grid search ---
 disp("conducting grid search 1"); tic
+% for i = 1:steps
+%     R1 = RM_list(i, :);
+%     V1 = VM_list(i, :);
+%     t1 = leg1.dep_times(i) * 24 * 3600;
+% 
+%     dv_row = NaN(1, steps);
+%     tof_row = NaN(1, steps);
+%     for j = 1:steps
+%         t2 = leg1.arr_times(j) * 24 * 3600;
+%         tof = t2 - t1;
+% 
+%         if tof > 0
+%             R3 = RE_list(j, :);
+%             V3 = VE_list(j, :);
+% 
+%             [~, ~, ~, leg1.ERROR, V2_temp, V3_temp, ~, ~] = ...
+%                 lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
+%             if leg1.ERROR == 0
+%                 dv_row(j) = norm(V2_temp - V1); %+ norm(V3_temp - V3);
+%                 tof_row(j) = t2 - t1;
+% 
+%                 V2_list(j, :) = V2_temp;
+%                 V3_list(j, :) = V3_temp;
+%             end
+%         end
+%     end
+%     leg1.dvtot(i, :) = dv_row;
+%     leg1.tof(i, :) = tof_row / (24 * 3600);
+% end
+
+[V2_list, V3_list, leg1.dvtot_array, leg1.tof_array] = ...
+    direct_transfer(R_dep_list, V_dep_list, R_arr_list);
+disp("complete!"); toc
+
+            %% === STATE 3/6: EARTH ARRIVAL === %%
+% --- Initialise geocentric incoming/outgoing velocity arrays ---
+v_inf_2_minus_list = V3_list - VE_list; % can be filled now
+v_inf_2_plus_list = zeros(steps, 3); % must be filled in later
+
+% also see V3_list from leg 1 grid search loop
+
+            %% === STATE 4/6: EARTH DEPARTURE === %%
+% --- Initialise heliocentric outgoing state array ---
+R4_list = zeros(steps, 3);
+V4_list = zeros(steps, 3);
+
+            %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
+% --- Conduct leg 2 grid search ---
+disp("conducting grid search 2"); tic
 for i = 1:steps
     R1 = RM_list(i, :);
     V1 = VM_list(i, :);
@@ -170,22 +220,14 @@ for i = 1:steps
 end
 disp("complete!"); toc
 
-            %% === STATE 2/6: MERCURY DEPARTURE === %%
-
-            %% === STATE 3/6: EARTH ARRIVAL === %%
-
-            %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
-% --- Initialise geocentric arrival velocity arrays ---
-leg1.v_inf_2_minus = NaN(steps, steps);
-leg1.v_inf_2_plus = NaN(steps, steps);
-
-            %% === STATE 4/6: EARTH DEPARTURE === %%
-
             %% === STATE 5/6: ASTEROID ARRIVAL === %%
-
-            %% === MANOUVRE 3/3: ORBIT MATCHING === %%
+% ---
 
             %% === STATE 6/6: ASTEROID ORBIT MATCHING === %%
+% ---
+
+            %% === MANOUVRE 3/3: ORBIT MATCHING === %%
+% ---
 
 %% 2. Evaluate Δ𝑣tot for a grid of departure and arrival times covering ...
 % the time windows provided for the Mercury-Earth leg.
