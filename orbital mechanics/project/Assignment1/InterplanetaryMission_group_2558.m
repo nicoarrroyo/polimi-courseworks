@@ -249,7 +249,6 @@ mjd2k1 = date2mjd2000([2031 7 15 9 41 49]);
 mjd2k2 = date2mjd2000([2032 6 15 9 41 49]);
 t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
-% tof = t2 - t1;
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 AU = astroConstants(2);
 
@@ -257,27 +256,6 @@ AU = astroConstants(2);
 [RD1, VD1] = get_planet_state(mjd2k1, planet_dep.id, mu_sun);
 [RGA1, VGA1] = get_planet_state(mjd2k1, planet_ga.id, mu_sun);
 [RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_arr.id, mu_sun);
-
-% [~, ~, ~, ~, V_transfer1, V_transfer2, ~, ~] = ...
-%     lambertMR( RD1, RGA2, tof, mu_sun, 0, 0, 0, 0 );
-
-% a. propagate the transfer arcs
-% y_transfer = [RD1 V_transfer1]; % transfer arc initial state vector
-% tspan = linspace(t1, t2);
-% 
-% [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan, y_transfer, options);
-% R_transfer = Y(:, 1:3);
-% V_transfer = Y(:, 4:6);
-
-% b. propagate the unused segment of the transfer arc
-% y_transfer_unused = [RA2 V_transfer2]; % transfer arc initial state vector
-% a_transfer = 1 / (2 / norm(RA2) - dot(V_transfer2, V_transfer2) / mu_sun); % semi major axis [km]
-% T_unused = 2*pi * sqrt(a_transfer^3 / mu_sun); % orbital period [s]
-% tspan_unused = linspace(t2, t2 + T_unused - t1); % integration time span array
-% 
-% [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_unused, y_transfer_unused, options);
-% R_transfer_unused = Y(:, 1:3);
-% V_transfer_unused = Y(:, 4:6);
 
 % c. propagate the departure planet orbit
 y_D = [RD1, VD1];
@@ -299,14 +277,6 @@ R_A = Y(:, 1:3) ./ AU;
 
 % --- plot ---
 figure("Name", "Orbit Plot"); hold on;
-
-% a. transfer arcs
-%plot3(R_transfer1(:, 1), R_transfer1(:, 2), R_transfer1(:, 3), "y");
-%plot3(R_transfer2(:, 1), R_transfer2(:, 2), R_transfer2(:, 3), "y");
-
-% b. unused segment of transfer arcs
-%plot3(R_transfer_unused1(:, 1), R_transfer_unused1(:, 2), R_transfer_unused1(:, 3), "--y");
-%plot3(R_transfer_unused2(:, 1), R_transfer_unused2(:, 2), R_transfer_unused2(:, 3), "--y");
 
 % c. departure planet orbit
 plot3(R_D(:, 1), R_D(:, 2), R_D(:, 3), "r"); % during transfer
@@ -335,16 +305,6 @@ scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
 % --- plot properties ---
 xlabel("X [AU]"); ylabel("Y [AU]"); zlabel("Z [AU]");
 title("Two-body problem orbit");
-% legend(...
-%     "transfer arc", ...
-%     ..."unused transfer arc segment", ...
-%     "", ...
-%     "", ...
-%     "departure planet at departure", ...
-%     "departure planet at arrival", ...
-%     "arrival planet at arrival", ...
-%     "arrival planet at departure", ...
-%     "");
 legend( ...
     "", ...
     "", ...
@@ -356,5 +316,43 @@ legend( ...
     "asteroid at departure", ...
     "asteroid at arrival", ...
     "");
-axis equal; grid on;
+axis equal; grid on; view(3);
 hold off;
+
+%% animated plot
+
+% 2. Initialise the plot
+figure("Name", "Animated Plot"); hold on; grid on; view(3); axis equal;
+title("Simultaneous Multi-Orbit Animation");
+scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
+xlim([-max([max(abs(R_D(:, 1))), max(abs(R_GA(:, 1)), max(abs(R_A(:, 1))))]), ...
+    max([max(abs(R_D(:, 1))), max(abs(R_GA(:, 1)), max(abs(R_A(:, 1))))])])
+ylim([-max([max(abs(R_D(:, 2))), max(abs(R_GA(:, 2)), max(abs(R_A(:, 2))))]), ...
+    max([max(abs(R_D(:, 2))), max(abs(R_GA(:, 2)), max(abs(R_A(:, 2))))])])
+zlim([-max([max(abs(R_D(:, 3))), max(abs(R_GA(:, 3)), max(abs(R_A(:, 3))))]), ...
+    max([max(abs(R_D(:, 3))), max(abs(R_GA(:, 3)), max(abs(R_A(:, 3))))])])
+
+% 3. Create animated lines
+h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
+h2 = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
+h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
+
+% 4. Add markers for the "heads" of the comets
+head1 = plot3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "ro", "MarkerFaceColor", "r");
+head2 = plot3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "go", "MarkerFaceColor", "g");
+head3 = plot3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "bo", "MarkerFaceColor", "b");
+
+% 5. Animation loop
+for i = 1:length(t)
+    % Update the tails
+    addpoints(h1, R_D(i, 1), R_D(i, 2), R_D(i, 3));
+    addpoints(h2, R_GA(i, 1), R_GA(i, 2), R_GA(i, 3));
+    addpoints(h3, R_A(i, 1), R_A(i, 2), R_A(i, 3));
+    
+    % Update the heads
+    set(head1, "XData", R_D(i, 1), "YData", R_D(i, 2), "ZData", R_D(i, 3));
+    set(head2, "XData", R_GA(i, 1), "YData", R_GA(i, 2), "ZData", R_GA(i, 3));
+    set(head3, "XData", R_A(i, 1), "YData", R_A(i, 2), "ZData", R_A(i, 3));
+    
+    drawnow limitrate; pause(0.01); 
+end
