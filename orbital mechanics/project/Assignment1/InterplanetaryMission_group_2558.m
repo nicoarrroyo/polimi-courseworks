@@ -132,11 +132,15 @@ for i = 1:steps
         get_planet_state(leg1.arr_times(i), planet_earth.id, mu_sun);
 end
 
-% --- Conduct grid search ---
+% --- Initialise delta-v and ToF arrays ---
 leg1.dvtot = NaN(steps, steps);
 leg1.tof = NaN(steps, steps);
-leg1.v_inf_minus = NaN(steps, steps);
-leg1.v_inf_plus = NaN(steps, steps);
+
+% --- Initialise geocentric arrival velocity arrays ---
+leg1.v_inf_2_minus = NaN(steps, steps); % relevant for manouvre 2
+leg1.v_inf_2_plus = NaN(steps, steps); % relevant for manouvre 2 SO WHY ARE YOU DOING IT HERE??!?!?!?
+
+% --- Conduct leg 1 grid search ---
 disp("conducting grid search 1"); tic
 for i = 1:steps
     R1 = leg1.R_dep_list(i, :);
