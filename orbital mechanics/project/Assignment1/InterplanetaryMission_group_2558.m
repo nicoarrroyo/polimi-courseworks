@@ -288,16 +288,16 @@ plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "g"); % during transfer
 plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b"); % during transfer
 
 % f. departure planet boundary positions
-scatter3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "none", "MarkerFaceColor", "r");
-scatter3(R_D(end, 1), R_D(end, 2), R_D(end, 3), "MarkerFaceColor", "filled", "MarkerEdgeColor", "r");
+scatter3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
+scatter3(R_D(end, 1), R_D(end, 2), R_D(end, 3), "filled", "MarkerFaceColor", "r");
 
 % g. gravity-assist planet boundary positions
-scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "none", "MarkerFaceColor", "g");
-scatter3(R_GA(end, 1), R_GA(end, 2), R_GA(end, 3), "MarkerFaceColor", "filled", "MarkerEdgeColor", "g");
+scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
+scatter3(R_GA(end, 1), R_GA(end, 2), R_GA(end, 3), "filled", "MarkerFaceColor", "g");
 
 % h. asteroid boundary positions
-scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "none", "MarkerFaceColor", "b");
-scatter3(R_A(end, 1), R_A(end, 2), R_A(end, 3), "MarkerFaceColor", "filled", "MarkerEdgeColor", "b");
+scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "b");
+scatter3(R_A(end, 1), R_A(end, 2), R_A(end, 3), "filled", "MarkerFaceColor", "b");
 
 % i. sun position
 scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
@@ -320,7 +320,6 @@ axis equal; grid on; view(3);
 hold off;
 
 %% animated plot
-
 % 1. Define orbital data
 t = linspace(t1, t2);
 x = R_D(:, 1); x2 = R_GA(:, 1); x3 = R_A(:, 1);
