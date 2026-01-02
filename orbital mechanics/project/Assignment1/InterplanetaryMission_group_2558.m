@@ -133,45 +133,10 @@ for i = 1:steps
         get_planet_state(leg1.arr_times(i), planet_earth.id, mu_sun);
 end
 
-% --- Initialise arrival V, delta-v, and ToF arrays ---
-leg1.dvtot = NaN(steps, steps);
-leg1.tof = NaN(steps, steps);
-V3_list = zeros(steps, 3); % satellite at earth arrival
-
 % --- Conduct leg 1 grid search ---
-disp("conducting grid search 1"); tic
-% for i = 1:steps
-%     R1 = RM_list(i, :);
-%     V1 = VM_list(i, :);
-%     t1 = leg1.dep_times(i) * 24 * 3600;
-% 
-%     dv_row = NaN(1, steps);
-%     tof_row = NaN(1, steps);
-%     for j = 1:steps
-%         t2 = leg1.arr_times(j) * 24 * 3600;
-%         tof = t2 - t1;
-% 
-%         if tof > 0
-%             R3 = RE_list(j, :);
-%             V3 = VE_list(j, :);
-% 
-%             [~, ~, ~, leg1.ERROR, V2_temp, V3_temp, ~, ~] = ...
-%                 lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
-%             if leg1.ERROR == 0
-%                 dv_row(j) = norm(V2_temp - V1); %+ norm(V3_temp - V3);
-%                 tof_row(j) = t2 - t1;
-% 
-%                 V2_list(j, :) = V2_temp;
-%                 V3_list(j, :) = V3_temp;
-%             end
-%         end
-%     end
-%     leg1.dvtot(i, :) = dv_row;
-%     leg1.tof(i, :) = tof_row / (24 * 3600);
-% end
-
+disp("conducting grid search 1 (gravity-assist injection)"); tic
 [V2_list, V3_list, leg1.dvtot_array, leg1.tof_array] = ...
-    direct_transfer(R_dep_list, V_dep_list, R_arr_list);
+    deep_space_injection(RM_list, VM_list, RE_list, ~, leg1.dep_times, leg1.arr_times, steps, 0);
 disp("complete!"); toc
 
             %% === STATE 3/6: EARTH ARRIVAL === %%
@@ -184,40 +149,26 @@ v_inf_2_plus_list = zeros(steps, 3); % must be filled in later
             %% === STATE 4/6: EARTH DEPARTURE === %%
 % --- Initialise heliocentric outgoing state array ---
 R4_list = zeros(steps, 3);
-V4_list = zeros(steps, 3);
+% V4_list = zeros(steps, 3);
 
             %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
+% --- Initialise Asteroid state array ---
+RE_list = zeros(steps, 3);
+VE_list = zeros(steps, 3);
+
+% --- Set up time array for first leg ---
+leg1.dep_times = linspace(leg1.early_dep_mjd2000, leg1.late_dep_mjd2000, steps);
+leg1.arr_times = linspace(leg1.early_arr_mjd2000, leg1.late_arr_mjd2000, steps);
+
+% --- Fill Earth state array ---
+for i = 1:steps
+    [RE_list(i, :), VE_list(i, :)] = ...
+        get_planet_state(leg1.arr_times(i), planet_earth.id, mu_sun);
+end
 % --- Conduct leg 2 grid search ---
 disp("conducting grid search 2"); tic
-for i = 1:steps
-    R1 = RM_list(i, :);
-    V1 = VM_list(i, :);
-    t1 = leg1.dep_times(i) * 24 * 3600;
-
-    dv_row = NaN(1, steps);
-    tof_row = NaN(1, steps);
-    for j = 1:steps
-        t2 = leg1.arr_times(j) * 24 * 3600;
-        tof = t2 - t1;
-        
-        if tof > 0
-            R3 = RE_list(j, :);
-            V3 = VE_list(j, :);
-
-            [~, ~, ~, leg1.ERROR, V2_temp, V3_temp, ~, ~] = ...
-                lambertMR(R1, R3, tof, mu_sun, 0, 0, 0, 0);
-            if leg1.ERROR == 0
-                dv_row(j) = norm(V2_temp - V1); %+ norm(V3_temp - V3);
-                tof_row(j) = t2 - t1;
-
-                V2_list(j, :) = V2_temp;
-                V3_list(j, :) = V3_temp;
-            end
-        end
-    end
-    leg1.dvtot(i, :) = dv_row;
-    leg1.tof(i, :) = tof_row / (24 * 3600);
-end
+[V4_list, V5_list, leg2.dvtot_array, leg2.tof_array] = ...
+    direct_transfer(RE_list, VE_list, RA_list);
 disp("complete!"); toc
 
             %% === STATE 5/6: ASTEROID ARRIVAL === %%
