@@ -55,7 +55,7 @@ leg1.late_arr_mjd2000 = travel_window.end_mjd2k;
 leg1.dep_times = linspace(leg1.early_dept_mjd2000, leg1.late_dept_mjd2000, steps);
 leg1.arr_times = linspace(leg1.early_arr_mjd2000, leg1.late_arr_mjd2000, steps);
 
-% --- pre-calculate planet states ---
+% --- pre-calculate planet and asteroid states ---
 leg1.R_dep_list = zeros(steps, 3);
 leg1.V_dep_list = zeros(steps, 3);
 leg1.R_arr_list = zeros(steps, 3);
@@ -75,25 +75,41 @@ leg1.v_inf_minus = NaN(steps, steps);
 leg1.v_inf_plus = NaN(steps, steps);
 disp("conducting grid search 1"); tic
 for i = 1:steps
-    r1 = leg1.R_dep_list(i, :);
-    v1 = leg1.V_dep_list(i, :);
+    R1 = leg1.R_dep_list(i, :);
+    V1 = leg1.V_dep_list(i, :);
     t1 = leg1.dep_times(i) * 24 * 3600;
 
     dv_row = NaN(1, steps);
     tof_row = NaN(1, steps);
     for j = 1:steps
         t2 = leg1.arr_times(j) * 24 * 3600;
-        tof = t2 - t1;
+        leg1.tof = t2 - t1;
         
-        if tof > 0
-            r2 = leg1.R_arr_list(j, :);
-            v2 = leg1.V_arr_list(j, :);
+        if leg1.tof > 0
+            R2 = leg1.R_arr_list(j, :);
+            V2 = leg1.V_arr_list(j, :);
 
-            [~, ~, ~, ERROR, v_t1, v_t2, ~, ~] = ...
-                lambertMR(r1, r2, tof, mu_sun, 0, 0, 0, 0);
-            if ERROR == 0
-                dv_row(j) = norm(v_t1 - v1) + norm(v_t2 - v2);
+            [~, ~, ~, leg1.ERROR, v_t1, v_t2, ~, ~] = ...
+                lambertMR(R1, R2, tof, mu_sun, 0, 0, 0, 0);
+            if leg1.ERROR == 0
+                dv_row(j) = norm(v_t1 - V1) + norm(v_t2 - V2);
                 tof_row(j) = t2 - t1;
+                
+                for k = 1:steps
+                    t3 = leg2.arr_times(k) * 24 * 3600;
+                    leg2.tof = t3 - t2;
+
+                    if leg2.tof > 0
+                        R3 = leg2.R_arr_list(k, :);
+                        V3 = leg2.V_arr_list(k, :);
+
+                        [~, ~, ~, leg2.ERROR, v_t3, v_t4, ~, ~] = ...
+                            lambertMR(R2, R3, tof, mu_sun, 0, 0, 0, 0);
+                        
+                        if leg2.ERROR == 0
+                            leg2.dv_row(j, k) = norm(v_t3 - V3) + norm(v_t4 - V); %TEMPORARY!
+                    end
+                end
             end
         end
     end
@@ -278,6 +294,10 @@ R_A = Y(:, 1:3) ./ AU;
 % --- plot ---
 figure("Name", "Orbit Plot"); hold on;
 
+% a. mercury-earth leg
+
+% b. earth-asteroid leg
+
 % c. departure planet orbit
 plot3(R_D(:, 1), R_D(:, 2), R_D(:, 3), "r"); % during transfer
 
@@ -327,7 +347,8 @@ y = R_D(:, 2); y2 = R_GA(:, 2); y3 = R_A(:, 2);
 z = R_D(:, 3); z2 = R_GA(:, 3); z3 = R_A(:, 3);
 
 % 2. Initialise the plot
-figure; hold on; grid on; view(3); axis equal;
+pause(2)
+figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
 xlim([-max([max(abs(x)), max(abs(x2)), max(abs(x3))]), max([max(abs(x)), max(abs(x2)), max(abs(x3))])])
 ylim([-max([max(abs(y)), max(abs(y2)), max(abs(y3))]), max([max(abs(y)), max(abs(y2)), max(abs(y3))])])
 zlim([-max([max(abs(z)), max(abs(z2)), max(abs(z3))]), max([max(abs(z)), max(abs(z2)), max(abs(z3))])])
