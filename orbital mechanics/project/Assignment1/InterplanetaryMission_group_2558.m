@@ -67,28 +67,108 @@ clear; close all; clc;
             %  --- START OF LEG 3 --- %
 % PLACEHOLDER
 
-                        %% ============= %%
-                        %% === LEG 1 === %%
-                        %% ============= %%
-
-%% 1. Initialisation
-% --- Constants ---
+%% 1. Constants
 steps = 100;
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
-r_E = astroConstants(23); % Earth mean radius [km]
-mu_E = astroConstants(13); % Earth Gravitational Parameter [km^3 s^-2]
 
-% --- Important arrays ---
-% Heliocentric Position (R)
+planet_M_id = 1;
+planet_M_name = "Mercury";
+planet_M_mu = astroConstants(10 + planet_M_id);
 
-% Heliocentric Velocity (V)
+planet_E_id = 3;
+planet_E_name = "Earth";
+planet_E_r = astroConstants(20 + planet_E_id);
+planet_E_mu = astroConstants(10 + planet_E_id);
 
-% Velocity Change (dv)
+asteroid_id = 316801;
+asteroid_name = "N." + asteroid_id;
 
-% Time of Flight (tof)
+%% 2. Initialise Arrays
+% --- Time ---
+travel_window_start_date = [2030, 1, 1, 0, 0, 0];
+travel_window_close_date = [2060, 1, 1, 0, 0, 0];
+travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
+travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
-% 
+dep_times_M = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
+arr_times_E = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
+dep_times_E = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
+arr_times_A = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
+
+% --- Heliocentric Position (R) and Velocity (V) ---
+% Mercury
+RM_list = zeros(steps, 3);
+VM_list = zeros(steps, 3);
+for i = 1:steps
+    [RM_list(i, :), VM_list(i, :)] = ...
+        get_planet_state(dep_times_M(i), planet_M_id);
+end
+
+% Earth
+RE_list = zeros(steps, 3);
+VE_list = zeros(steps, 3);
+for i = 1:steps
+    [RE_list(i, :), VE_list(i, :)] = ...
+        get_planet_state(dep_times_E(i), planet_E_id);
+end
+
+% Asteroid
+RA_list = zeros(steps, 3);
+VA_list = zeros(steps, 3);
+for i = 1:steps
+    [RA_list(i, :), VA_list(i, :)] = ...
+        get_asteroid_state(arr_times_A(i), asteroid_id);
+end
+
+% Satellite
+V1_list = NaN(steps, steps, 3); % Departure from Mercury
+V2_list = NaN(steps, steps, 3); % Arrival at Earth
+V3_list = NaN(steps, steps, 3); % Departure from Earth
+V4_list = NaN(steps, steps, 3); % Arrival at Asteroid
+
+% --- Velocity Change (dv) ---
+dv_grid1 = NaN(steps, steps, 3); % Leg 1: Mercury-Earth
+dv_grid2 = NaN(steps, steps, 3); % Leg 2: Earth-Asteroid
+
+% --- Time of Flight (tof) ---
+tof_grid1 = NaN(steps, steps); % Leg 1: Mercury-Earth
+tof_grid2 = NaN(steps, steps); % Leg 2: Earth-Asteroid
+
+%% Manouvre 1: Lambert Departure
+% --- Conduct leg 1 grid search ---
+disp("conducting grid search 1 (gravity-assist injection)"); tic
+
+for i = 1:steps
+    t1 = dep_times_M(i) * 24 * 3600;
+    R1 = RM_list(i, :);
+    
+    for j = 1:(steps)
+        t2 = arr_times_E(j) * 24 * 3600;
+        tof = t2 - t1;
+
+        if tof < 0
+            continue
+        end
+
+        R2 = RE_list(j, :);
+        [~, ~, ~, ERROR, V1, V2, ~, ~] = ...
+            lambertMR(R1, R2, tof, mu_sun, 0, 0, 0, 0);
+
+        if ERROR ~= 0
+            continue
+        end
+
+        V1_list(i, j, :) = V1;
+        V2_list(i, j, :) = V2;
+        tof_grid1(i, j) = tof;
+    end
+end
+
+% --- Compute dv ---
+dv_grid1 = V1_list - reshape(VM_list, [1, 100, 3]);
+
+disp("complete!"); toc
 
 % %% 1. Initialisation
 % % --- Constants ---
