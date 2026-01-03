@@ -6,15 +6,15 @@ clear; close all; clc;
 
 %% 1. Initialisation
 % --- Constants ---
-steps = 1000;
+steps = 100;
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
 r_E = astroConstants(23); % Earth mean radius [km]
 mu_E = astroConstants(13); % Earth Gravitational Parameter [km^3 s^-2]
 
 % --- Travel Window ---
-travel_window.start_date = [2030, 1, 1, 0, 0, 0];
-travel_window.end_date = [2060, 1, 1, 0, 0, 0];
+travel_window.start_date = [2042, 1, 1, 0, 0, 0];
+travel_window.end_date = [2045, 1, 1, 0, 0, 0];
 travel_window.start_mjd2k = date2mjd2000(travel_window.start_date);
 travel_window.end_mjd2k = date2mjd2000(travel_window.end_date);
 
@@ -156,7 +156,7 @@ v_inf_2_minus_list = V3_list - VE_list; % can be filled now
             %% === STATE 4/6: EARTH DEPARTURE === %%
 % --- Initialise heliocentric outgoing state array ---
 R4_list = zeros(steps, 3);
-% V4_list = zeros(steps, 3);
+V4_list = zeros(steps, 3);
 
 rp_list = zeros(steps, 1);
 rp_list_invalid = zeros(steps, 1);
@@ -178,9 +178,11 @@ for i = 1:steps
 end
 
 % --- Conduct leg 2 grid search ---
-disp("conducting grid search 2 (full lambert transfer)"); tic
-[V4_list, V5_list, leg2.dvtot_array, leg2.tof_array] = ...
-    deep_space_injection(RE_list, VE_list, RA_list, VA_list, leg2.dep_times, leg2.arr_times, steps, 1);
+disp("conducting grid search 2 (full lambert transfer) (nested)"); tic
+for i = 1:steps
+    [V4_list, V5_list, leg2.dvtot_array, leg2.tof_array] = ...
+        deep_space_injection(RE_list, VE_list, RA_list, VA_list, leg2.dep_times, leg2.arr_times, steps, 1);
+end
 disp("complete!"); toc
 
 % --- Calculate necessary perigee burn to match outgoing arc ---
@@ -394,44 +396,44 @@ legend( ...
 axis equal; grid on; view(3);
 hold off;
 
-%% animated plot
-% 1. Define orbital data
-t = linspace(t1, t2);
-x = R_D(:, 1); x2 = R_GA(:, 1); x3 = R_A(:, 1);
-y = R_D(:, 2); y2 = R_GA(:, 2); y3 = R_A(:, 2);
-z = R_D(:, 3); z2 = R_GA(:, 3); z3 = R_A(:, 3);
-
-% 2. Initialise the plot
-pause(2)
-figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
-xlim([-max([max(abs(x)), max(abs(x2)), max(abs(x3))]), max([max(abs(x)), max(abs(x2)), max(abs(x3))])])
-ylim([-max([max(abs(y)), max(abs(y2)), max(abs(y3))]), max([max(abs(y)), max(abs(y2)), max(abs(y3))])])
-zlim([-max([max(abs(z)), max(abs(z2)), max(abs(z3))]), max([max(abs(z)), max(abs(z2)), max(abs(z3))])])
-title("Simultaneous Multi-Orbit Animation");
-scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
-
-% 3. Create animated lines
-h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
-h2 = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
-h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
-
-% 4. Add markers for the "heads" of the comets
-head1 = plot3(x(1), y(1), z(1), "ro", "MarkerFaceColor", "r");
-head2 = plot3(x2(1), y2(1), z2(1), "go", "MarkerFaceColor", "g");
-head3 = plot3(x3(1), y3(1), z3(1), "bo", "MarkerFaceColor", "b");
-pause(1)
-
-% 5. Animation loop
-for i = 1:length(t)
-    % Update the tails
-    addpoints(h1, x(i), y(i), z(i));
-    addpoints(h2, x2(i), y2(i), z2(i));
-    addpoints(h3, x3(i), y3(i), z3(i));
-    
-    % Update the heads
-    set(head1, "XData", x(i), "YData", y(i), "ZData", z(i));
-    set(head2, "XData", x2(i), "YData", y2(i), "ZData", z2(i));
-    set(head3, "XData", x3(i), "YData", y3(i), "ZData", z3(i));
-    
-    drawnow limitrate; pause(0.05); 
-end
+% %% animated plot
+% % 1. Define orbital data
+% t = linspace(t1, t2);
+% x = R_D(:, 1); x2 = R_GA(:, 1); x3 = R_A(:, 1);
+% y = R_D(:, 2); y2 = R_GA(:, 2); y3 = R_A(:, 2);
+% z = R_D(:, 3); z2 = R_GA(:, 3); z3 = R_A(:, 3);
+% 
+% % 2. Initialise the plot
+% pause(2)
+% figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
+% xlim([-max([max(abs(x)), max(abs(x2)), max(abs(x3))]), max([max(abs(x)), max(abs(x2)), max(abs(x3))])])
+% ylim([-max([max(abs(y)), max(abs(y2)), max(abs(y3))]), max([max(abs(y)), max(abs(y2)), max(abs(y3))])])
+% zlim([-max([max(abs(z)), max(abs(z2)), max(abs(z3))]), max([max(abs(z)), max(abs(z2)), max(abs(z3))])])
+% title("Simultaneous Multi-Orbit Animation");
+% scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
+% 
+% % 3. Create animated lines
+% h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
+% h2 = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
+% h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
+% 
+% % 4. Add markers for the "heads" of the comets
+% head1 = plot3(x(1), y(1), z(1), "ro", "MarkerFaceColor", "r");
+% head2 = plot3(x2(1), y2(1), z2(1), "go", "MarkerFaceColor", "g");
+% head3 = plot3(x3(1), y3(1), z3(1), "bo", "MarkerFaceColor", "b");
+% pause(1)
+% 
+% % 5. Animation loop
+% for i = 1:length(t)
+%     % Update the tails
+%     addpoints(h1, x(i), y(i), z(i));
+%     addpoints(h2, x2(i), y2(i), z2(i));
+%     addpoints(h3, x3(i), y3(i), z3(i));
+% 
+%     % Update the heads
+%     set(head1, "XData", x(i), "YData", y(i), "ZData", z(i));
+%     set(head2, "XData", x2(i), "YData", y2(i), "ZData", z2(i));
+%     set(head3, "XData", x3(i), "YData", y3(i), "ZData", z3(i));
+% 
+%     drawnow limitrate; pause(0.05); 
+% end
