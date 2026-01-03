@@ -8,13 +8,13 @@ clear; close all; clc;
 % Design a powered gravity assist around the Earth, given the incoming and
 % outgoing heliocentric velocities, and the Earth's position
 %% preamble
-V_minus = [31.5; 5.2; 0;];      % incoming heliocentric velocity [km s^-1]
-V_plus  = [36; 0; 0;];          % outgoing heliocentric velocity [km s^-1]
-mu_E    = astroConstants(13);   % earth gravitational parameter [km^2 s^-3]
-mu_sun  = astroConstants(4);    % sun gravitational parameter [km^2 s^-3]
-AU      = astroConstants(2);    % astronomical unit [km]
-R_E     = [0; -1; 0;] * AU;     % earth orbit radius [km]
-r_E     = astroConstants(23);
+V_minus = [31.5; 5.2; 0;];    % incoming heliocentric velocity [km s^-1]
+V_plus  = [36; 0; 0;];        % outgoing heliocentric velocity [km s^-1]
+mu_E    = astroConstants(13); % earth gravitational parameter [km^2 s^-3]
+mu_sun  = astroConstants(4);  % sun gravitational parameter [km^2 s^-3]
+AU      = astroConstants(2);  % astronomical unit [km]
+R_E     = [0; -1; 0;] * AU;   % earth orbit radius [km]
+r_E     = astroConstants(23); % earth mean radius [km]
 
 %% === part 1 ===
 % Compute the velocities wrt the planet before and after the fly-by
@@ -37,7 +37,7 @@ eq = @(r_p) turn_angle - ...
 r_p = fzero(eq, r_E + h_atm);
 
 % --- check its validity ---
-r_p_crit    = r_E + h_atm;  % critical fly-by pericentre radius
+r_p_crit = r_E + h_atm; % critical fly-by pericentre radius
 
 if r_p < r_p_crit
     fprintf("\n!!! DANGER DANGER DANGER !!!\n")
