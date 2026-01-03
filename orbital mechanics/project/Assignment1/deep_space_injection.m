@@ -1,5 +1,5 @@
-function [V_in_list, V_out_list, dv_array, tof_array] = ...
-    deep_space_injection(R_dep_list, V_dep_list, R_arr_list, ...
+function [V_out_list, V_in_list, dv_array, tof_array] = ...
+    deep_space_injection(R_dep_list, V_dep_list, R_arr_list, V_arr_list, ...
     dep_times, arr_times, steps, full_lambert, dv_lim)
 
 % FUNCTIONNAME Brief one-line description of what the function does.
@@ -55,8 +55,8 @@ function [V_in_list, V_out_list, dv_array, tof_array] = ...
 
 mu_sun = astroConstants(4);
 
-V_in_list = NaN(steps, steps, 3);
 V_out_list = NaN(steps, steps, 3);
+V_in_list = NaN(steps, steps, 3);
 dv_array = NaN(steps, steps, 3);
 tof_array = NaN(steps, steps, 3);
 
@@ -68,7 +68,7 @@ for i = 1:steps
         % check for arrival being after departure
         temp_t2 = arr_times(j) * 24 * 3600;
         temp_tof = temp_t2 - temp_t1;
-        if temp_tof < 0
+        if temp_tof <= 0
             continue
         end
 
@@ -80,14 +80,22 @@ for i = 1:steps
             continue
         end
 
+        % check for full lambert or only direct transfer
+        if full_lambert == 1
+            temp_dv = (temp_V1 - V_dep_list(i, :)) + (temp_V2 - V_arr_list(i, :));
+        elseif full_lambert == 0
+            temp_dv = temp_V1 - V_dep_list(i, :);
+        else
+            continue
+        end
+
         % check for reasonable delta-v
-        temp_dv = temp_V1 - V_dep_list(i, :);
         if norm(temp_dv) > dv_lim
             continue
         end
 
-        V_in_list(i, j, :) = temp_V1;
-        V_out_list(i, j, :) = temp_V2;
+        V_out_list(i, j, :) = temp_V1;
+        V_in_list(i, j, :) = temp_V2;
         dv_array(i, j, :) = temp_dv;
         tof_array(i, j) = temp_tof;
     end
