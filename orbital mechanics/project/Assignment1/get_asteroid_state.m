@@ -10,6 +10,57 @@ function [r, v] = get_asteroid_state(mjd2000, body_id)
 %   r - Position vector [km] (column vector)
 %   v - Velocity vector [km s^-1] (column vector)
 
+% FUNCTIONNAME Brief one-line description of what the function does.
+%
+%   SYNTAX
+%   ------
+%   output = functionName(input1, input2)
+%   output = functionName(input1, input2, "OptionName", OptionValue)
+%
+%   DESCRIPTION
+%   -----------
+%   More detailed description of the function's purpose and behavior.
+%   Explain what the function does, any important notes about its operation,
+%   and any special cases or limitations.
+%
+%   INPUT ARGUMENTS
+%   ---------------
+%   input1			- (dataType) Description of input1.
+%            			Default: [default value if applicable]
+%
+%   input2   		- (dataType) Description of input2.
+%                  		Default: [default value if applicable]
+%
+%   OUTPUT ARGUMENTS
+%   ----------------
+%   output      	- (dataType) Description of output.
+%
+%   OPTIONAL PARAMETERS
+%   -------------------
+%   "OptionName" 	- (dataType) Description of the option.
+%                  		Default: [default value]
+%
+%   EXAMPLES
+%   --------
+%   Example 1: Basic usage
+%       output = functionName(input1, input2);
+%
+%   Example 2: With optional parameters
+%       output = functionName(input1, input2, "OptionName", value);
+%
+%   NOTES
+%   -----
+%	Performance: 
+% 	Numerical Stability: 
+% 	Usage: 
+% 	Dependencies: 
+%
+%   Author:  
+%   Date:    
+%   Updated: 
+%
+%   See also RELATEDFUNCTION1, RELATEDFUNCTION2
+
     [kep, ~, ~] = ephAsteroids(mjd2000, body_id);
 
     mu = astroConstants(4);

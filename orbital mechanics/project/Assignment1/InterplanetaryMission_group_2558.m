@@ -68,7 +68,8 @@ clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 100;
+steps = 1000;
+dv_lim = 20; % [km s^-1] should be set as low as possible (reduces computation time)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -87,8 +88,8 @@ asteroid_name = "N." + asteroid_id;
 
 %% 2. Initialise Arrays
 % --- Time ---
-travel_window_start_date = [2030, 1, 1, 0, 0, 0];
-travel_window_close_date = [2060, 1, 1, 0, 0, 0];
+travel_window_start_date = [2051, 1, 1, 0, 0, 0];
+travel_window_close_date = [2052, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -147,7 +148,7 @@ disp("conducting grid search 1 (gravity-assist injection)"); tic
 
 [V1_list, V2_list, dv_grid1, tof_grid1] = ...
     deep_space_injection(RM_list, VM_list, RE_list, VE_list, ...
-    dep_times_M, arr_times_E, steps, 0, 50);
+    dep_times_M, arr_times_E, steps, 0, dv_lim);
 
 disp("complete!"); toc
 
@@ -172,7 +173,7 @@ disp("conducting grid search 2 (gravity-assist)"); tic
 
 [V3_list, V4_list, dv_grid2, tof_grid2] = ...
     deep_space_injection(RE_list, VE_list, RA_list, VA_list, ...
-    dep_times_E, arr_times_A, steps, 1, 50);
+    dep_times_E, arr_times_A, steps, 1, dv_lim);
 
 disp("complete"); toc
 
