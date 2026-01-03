@@ -7,10 +7,14 @@ clear; close all; clc;
 %% 1. Initialisation
 % --- Constants ---
 steps = 1000;
+mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
+AU = astroConstants(2); % Astronomical Unit [km]
+r_E = astroConstants(23); % Earth mean radius [km]
+mu_E = astroConstants(13); % Earth Gravitational Parameter [km^3 s^-2]
 
 % --- Travel Window ---
 travel_window.start_date = [2030, 1, 1, 0, 0, 0];
-travel_window.end_date = [2032, 1, 1, 0, 0, 0];
+travel_window.end_date = [2060, 1, 1, 0, 0, 0];
 travel_window.start_mjd2k = date2mjd2000(travel_window.start_date);
 travel_window.end_mjd2k = date2mjd2000(travel_window.end_date);
 
@@ -142,7 +146,7 @@ disp("complete!"); toc
             %% === STATE 3/6: EARTH ARRIVAL === %%
 % --- Initialise geocentric incoming/outgoing velocity arrays ---
 v_inf_2_minus_list = V3_list - VE_list; % can be filled now
-v_inf_2_plus_list = zeros(steps, 3); % must be filled in later
+% v_inf_2_plus_list = zeros(steps, 3); % must be filled in later
 
 % also see V3_list from leg 1 grid search loop
 
@@ -153,6 +157,10 @@ v_inf_2_plus_list = zeros(steps, 3); % must be filled in later
 % --- Initialise heliocentric outgoing state array ---
 R4_list = zeros(steps, 3);
 % V4_list = zeros(steps, 3);
+
+rp_list = zeros(steps, 1);
+rp_list_invalid = zeros(steps, 1);
+turn_angle = zeros(steps, 1);
 
             %% === MANOUVRE 2/3: POWERED GRAVITY ASSIST === %%
 % --- Initialise Asteroid state array ---
@@ -174,6 +182,45 @@ disp("conducting grid search 2 (full lambert transfer)"); tic
 [V4_list, V5_list, leg2.dvtot_array, leg2.tof_array] = ...
     deep_space_injection(RE_list, VE_list, RA_list, VA_list, leg2.dep_times, leg2.arr_times, steps, 1);
 disp("complete!"); toc
+
+% --- Calculate necessary perigee burn to match outgoing arc ---
+v_inf_2_plus_list = V4_list - VE_list; % geocentric outgoing velocity
+
+for i = 1:steps
+    turn_angle(i) = acos(...
+        dot(v_inf_2_minus_list(i, :), v_inf_2_plus_list(i, :)) / ...
+        (norm(v_inf_2_minus_list(i, :)) * norm(v_inf_2_plus_list(i, :))) ...
+        );
+end
+
+h_atm = 500; % height of earth atmosphere from sea-level [km]
+rp_crit = r_E + h_atm; % critical fly-by pericentre radius
+
+disp("Calculating pericente radii for possible gravity-assist manouvres")
+for i = 1:steps % solve the non-linear system for pericentre radius
+    eq = @(rp) turn_angle(i) - ...
+        asin(1 / (1 + (rp * norm(v_inf_2_plus_list(i, :))^2) / mu_E)) - ...
+        asin(1 / (1 + (rp * norm(v_inf_2_minus_list(i, :))^2) / mu_E));
+    rp = fzero(eq, r_E + h_atm);
+    
+    if rp > rp_crit
+        rp_list(i) = rp;
+    else
+        rp_list_invalid(i) = rp;
+    end
+end
+disp("There were " + rp_list_invalid + " manouvres at invalid pericentre radii")
+
+ecc_2_minus_list = 1 + (rp_list .* norm(v_inf_2_minus_list).^2 / mu_E);
+a_2_minus_list = -mu_E ./ (norm(v_inf_2_plus_list).^2);
+v_p_2_minus_list = sqrt(mu_E .* (2 ./ rp_list - 1 ./ a_2_minus_list));
+
+ecc_2_plus_list = 1 + (rp_list .* norm(v_inf_2_plus_list).^2 / mu_E);
+a_2_plus_list = -mu_E ./ (norm(v_inf_2_plus_list).^2);
+v_p_2_plus_list = sqrt(mu_E .* (2 ./ rp_list - 1 ./ a_2_plus_list));
+
+dv_p_list = v_p_2_plus_list - v_p_2_minus_list;
+dv_ga_list = norm(dv_p_list);
 
             %% === STATE 5/6: ASTEROID ARRIVAL === %%
 % ---
@@ -268,13 +315,13 @@ fprintf("Total ToF (days):    %.2f\n", leg2.tof_opt_grid);
 
 %% 5. Plot the transfer trajectory for this mission
 % --- set up times and options ---
+% mjd2k1 = date2mjd2000([2031 7 15 9 41 49]);
+% mjd2k2 = date2mjd2000([2032 6 15 9 41 49]);
 mjd2k1 = date2mjd2000([2031 7 15 9 41 49]);
-mjd2k2 = date2mjd2000([2032 6 15 9 41 49]);
+mjd2k2 = date2mjd2000([2031 10 15 9 41 49]);
 t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
-AU = astroConstants(2);
-mu_sun = astroConstants(4);
 
 % --- get planet and asteroid positions ---
 [RD1, VD1] = get_planet_state(mjd2k1, planet_mercury.id);
@@ -372,6 +419,7 @@ h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
 head1 = plot3(x(1), y(1), z(1), "ro", "MarkerFaceColor", "r");
 head2 = plot3(x2(1), y2(1), z2(1), "go", "MarkerFaceColor", "g");
 head3 = plot3(x3(1), y3(1), z3(1), "bo", "MarkerFaceColor", "b");
+pause(1)
 
 % 5. Animation loop
 for i = 1:length(t)
