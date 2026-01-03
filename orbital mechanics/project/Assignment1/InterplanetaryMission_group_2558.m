@@ -192,6 +192,9 @@ porkchop_plot( ...
 find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A);
 
 %% Manouvre 2.2: Gravity Assist at Earth
+v_minus_norm = vecnorm(v_minus_list, 2, 3);
+v_plus_norm = vecnorm(v_plus_list, 2, 3);
+
 rp_list = NaN(steps, steps);
 rp_list_low = NaN(steps, steps);
 rp_list_broken = NaN(steps, steps);
@@ -201,7 +204,7 @@ for i = 1:size(v_plus_list, 1)
     for j = 1:size(v_plus_list, 2)
         turn_angle(i, j) = ...
             acos(dot(v_minus_list(i, j, :), v_plus_list(i, j, :)) / ...
-            (norm(squeeze(v_minus_list(i, j, :))) * norm(squeeze(v_plus_list(i, j, :)))));
+            (v_minus_norm(i, j) * v_plus_norm(i, j)));
     end
 end
 
@@ -209,14 +212,15 @@ h_atm = 500; % Earth atmosphere altitude [km]
 rp_crit = planet_E_r + h_atm; % lowest allowed fly-by radius
 options = optimset('Display','off'); % show iterations
 
+disp("conducting non-linear pericentre radius search"); tic;
 for i = 1:steps
     for j = 1:steps
         if isnan(turn_angle(i, j))
             continue
         end
         eq = @(rp) turn_angle(i, j) - ...
-            asin(1 / (1 + (rp * norm(squeeze(v_plus_list(i, j, :)))^2) / planet_E_mu)) - ...
-            asin(1 / (1 + (rp * norm(squeeze(v_minus_list(i, j, :)))^2) / planet_E_mu));
+            asin(1 / (1 + (rp * v_plus_norm(i, j)^2) / planet_E_mu)) - ...
+            asin(1 / (1 + (rp * v_minus_norm(i, j)^2) / planet_E_mu));
         temp_rp = fzero(eq, rp_crit, options);
         
         if temp_rp >= rp_crit
@@ -228,6 +232,7 @@ for i = 1:steps
         end
     end
 end
+disp("complete!"); toc;
 
 %% Manouvre 3: Rendez-Vous at Asteroid
 
