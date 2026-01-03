@@ -145,43 +145,14 @@ tof_grid2 = NaN(steps, steps); % Leg 2: Earth-Asteroid
 % --- Conduct leg 1 grid search ---
 disp("conducting grid search 1 (gravity-assist injection)"); tic
 
-for i = 1:steps-10
-    temp_t1 = dep_times_M(i) * 24 * 3600;
-    temp_R1 = RM_list(i, :);
-    
-    for j = 1:steps
-        % check for arrival being after departure
-        temp_t2 = arr_times_E(j) * 24 * 3600;
-        temp_tof = temp_t2 - temp_t1;
-        if temp_tof < 0
-            continue
-        end
+[V1_list, V2_list, dv_grid1, tof_grid1] = ...
+    deep_space_injection(RM_list, VM_list, RE_list, ...
+    dep_times_M, arr_times_E, steps, 0, 50);
 
-        % check for valid lambert arc
-        temp_R2 = RE_list(j, :);
-        [~, ~, ~, temp_ERROR, temp_V1, temp_V2, ~, ~] = ...
-            lambertMR(temp_R1, temp_R2, temp_tof, mu_sun, 0, 0, 0, 0);
-        if temp_ERROR ~= 0
-            continue
-        end
-
-        % check for reasonable delta-v
-        temp_dv = temp_V1 - VM_list(i, :);
-        if norm(temp_dv) > 50
-            continue
-        end
-
-        V1_list(i, j, :) = temp_V1;
-        V2_list(i, j, :) = temp_V2;
-        dv_grid1(i, j, :) = temp_dv;
-        tof_grid1(i, j) = temp_tof;
-    end
-end
+disp("complete!"); toc
 
 % --- Compute dv ---
 dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
-
-disp("complete!"); toc
 
 % --- Analyse grid search the Mercury-Earth Leg ---
 porkchop_plot( ...
@@ -193,6 +164,23 @@ porkchop_plot( ...
 find_lowest_dv_mission(dv_grid1_norm, dep_times_M, arr_times_E);
 
 %% Manouvre 2: Gravity Assist from Earth
+% --- Incoming Geocentric Velocity ---
+v_minus2_list = V2_list - reshape(VE_list, [size(V2_list, 1), 1, size(V2_list, 3)]);
+
+% --- Conduct leg 2 grid search ---
+disp("conducting grid search 2 (gravity-assist)"); tic
+
+[V3_list, V4_list, dv_grid2, tof_grid2] = ...
+    deep_space_injection(RE_list, VE_list, RA_list, ...
+    dep_times_E, arr_times_A, steps, 0, 50);
+
+disp("complete"); toc
+
+% --- Compute dv ---
+dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
+
+% --- Outgoing Geocentric Velocity ---
+v_plus2_list = V3_list - reshape(VE_list, [size(V2_list, 1), 1, size(V2_list, 3)]);
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
 porkchop_plot( ...
