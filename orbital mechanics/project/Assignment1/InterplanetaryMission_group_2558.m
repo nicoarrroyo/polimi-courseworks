@@ -163,9 +163,9 @@ porkchop_plot( ...
 
 find_lowest_dv_mission(dv_grid1_norm, dep_times_M, arr_times_E);
 
-%% Manouvre 2: Gravity Assist from Earth
+%% Manouvre 2.1: Lambert Arc from Earth
 % --- Incoming Geocentric Velocity ---
-v_minus2_list = V2_list - reshape(VE_list, [size(V2_list, 1), 1, size(V2_list, 3)]);
+v_minus_list = V2_list - reshape(VE_list, [size(V2_list, 1), 1, size(V2_list, 3)]);
 
 % --- Conduct leg 2 grid search ---
 disp("conducting grid search 2 (gravity-assist)"); tic
@@ -180,7 +180,7 @@ disp("complete"); toc
 dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
 
 % --- Outgoing Geocentric Velocity ---
-v_plus2_list = V3_list - reshape(VE_list, [size(V2_list, 1), 1, size(V2_list, 3)]);
+v_plus_list = V3_list - reshape(VE_list, [size(V3_list, 1), 1, size(V3_list, 3)]);
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
 porkchop_plot( ...
@@ -190,6 +190,44 @@ porkchop_plot( ...
     arr_times_A);
 
 find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A);
+
+%% Manouvre 2.2: Gravity Assist at Earth
+rp_list = NaN(steps, steps);
+rp_list_low = NaN(steps, steps);
+rp_list_broken = NaN(steps, steps);
+
+turn_angle = NaN(steps, steps);
+for i = 1:size(v_plus_list, 1)
+    for j = 1:size(v_plus_list, 2)
+        turn_angle(i, j) = ...
+            acos(dot(v_minus_list(i, j, :), v_plus_list(i, j, :)) / ...
+            (norm(squeeze(v_minus_list(i, j, :))) * norm(squeeze(v_plus_list(i, j, :)))));
+    end
+end
+
+h_atm = 500; % Earth atmosphere altitude [km]
+rp_crit = planet_E_r + h_atm; % lowest allowed fly-by radius
+options = optimset('Display','off'); % show iterations
+
+for i = 1:steps
+    for j = 1:steps
+        if isnan(turn_angle(i, j))
+            continue
+        end
+        eq = @(rp) turn_angle(i, j) - ...
+            asin(1 / (1 + (rp * norm(squeeze(v_plus_list(i, j, :)))^2) / planet_E_mu)) - ...
+            asin(1 / (1 + (rp * norm(squeeze(v_minus_list(i, j, :)))^2) / planet_E_mu));
+        temp_rp = fzero(eq, rp_crit, options);
+        
+        if temp_rp >= rp_crit
+            rp_list(i, j) = temp_rp;
+        elseif temp_rp < rp_crit
+            rp_list_low(i, j) = temp_rp;
+        else
+            rp_list_broken(i, j) = temp_rp;
+        end
+    end
+end
 
 %% Manouvre 3: Rendez-Vous at Asteroid
 
@@ -288,87 +326,6 @@ find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A);
 %             %% === MANOUVRE 3/3: ORBIT MATCHING === %%
 % % ---
 % 
-% %% 3. Draw the porkchop plot of the Mercury-Earth Leg
-% figure("Name", "Mercury-Earth Leg Porkchop Plot"); hold on; grid on; axis equal;
-% 
-% % --- plot dv ---
-% leg1.dv_min = 15; leg1.dv_max = 100;
-% leg1.v_levels = leg1.dv_min : 1 : leg1.dv_max;
-% contour(leg1.dep_times, leg1.arr_times, leg1.dvtot_array', leg1.v_levels, "ShowText", "off");
-% clim([leg1.dv_min, leg1.dv_max]);
-% 
-% % --- plot the constant time of flight lines ---
-% % leg1.tof_levels = 50 : 50 : 200;
-% % contour(leg1.dep_times, leg1.arr_times, leg1.tof, leg1.tof_levels, "ShowText", "on");
-% 
-% % --- plot ---
-% colorbar;
-% xlabel("Departure Time (MJD2000)");
-% ylabel("Arrival Time (MJD2000)");
-% title("Porkchop Plot: Δv_{tot} for Mercury-Earth Leg");
-% hold off;
-% 
-% %% 4. Find the cheapest mission in terms of Δv
-% [leg1.min_val, min_idx_linear] = min(leg1.dvtot_array(:));
-% [row_idx, col_idx] = ind2sub(size(leg1.dvtot_array), min_idx_linear);
-% 
-% leg1.mjd_opt_dep_grid = leg1.dep_times(row_idx);
-% leg1.date_d = mjd20002date(leg1.mjd_opt_dep_grid);
-% 
-% leg1.mjd_opt_arr_grid = leg1.arr_times(col_idx);
-% leg1.date_a = mjd20002date(leg1.mjd_opt_arr_grid);
-% 
-% leg1.tof_opt_grid = leg1.mjd_opt_arr_grid - leg1.mjd_opt_dep_grid;
-% 
-% % --- results output ---
-% fprintf("\n=== GRID SEARCH RESULTS ===\n");
-% fprintf("Min Delta V: %.4f km s^-1\n", leg1.min_val);
-% fprintf("Departure:   MJD2000 %.2f\n", leg1.mjd_opt_dep_grid);
-% fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", leg1.date_d);
-% fprintf("Arrival:     MJD2000 %.2f\n", leg1.mjd_opt_arr_grid);
-% fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", leg1.date_a);
-% fprintf("Total ToF (days):    %.2f\n", leg1.tof_opt_grid);
-% 
-% %% 3. Draw the porkchop plot of the Mercury-Earth Leg
-% figure("Name", "Mercury-Earth Leg Porkchop Plot"); hold on; grid on; axis equal;
-% 
-% % --- plot dv ---
-% leg2.dv_min = 15; leg2.dv_max = 60;
-% leg2.v_levels = leg2.dv_min : 1 : leg2.dv_max;
-% contour(leg2.dep_times, leg2.arr_times, leg2.dvtot_array', leg2.v_levels, "ShowText", "off");
-% clim([leg2.dv_min, leg2.dv_max]);
-% 
-% % --- plot the constant time of flight lines ---
-% % leg2.tof_levels = 200 : 100 : 500;
-% % contour(leg2.dep_times, leg2.arr_times, leg2.tof, leg2.tof_levels, "ShowText", "on");
-% 
-% % --- plot ---
-% colorbar;
-% xlabel("Departure Time (MJD2000)");
-% ylabel("Arrival Time (MJD2000)");
-% title("Porkchop Plot: Δv_{tot} for Mercury-Earth Leg");
-% hold off;
-% 
-% %% 4. Find the cheapest mission in terms of Δv
-% [leg2.min_val, min_idx_linear] = min(leg2.dvtot_array(:));
-% [row_idx, col_idx] = ind2sub(size(leg2.dvtot_array), min_idx_linear);
-% 
-% leg2.mjd_opt_dep_grid = leg2.dep_times(row_idx);
-% leg2.date_d = mjd20002date(leg2.mjd_opt_dep_grid);
-% 
-% leg2.mjd_opt_arr_grid = leg2.arr_times(col_idx);
-% leg2.date_a = mjd20002date(leg2.mjd_opt_arr_grid);
-% 
-% leg2.tof_opt_grid = leg2.mjd_opt_arr_grid - leg2.mjd_opt_dep_grid;
-% 
-% % --- results output ---
-% fprintf("\n=== GRID SEARCH RESULTS ===\n");
-% fprintf("Min Delta V: %.4f km s^-1\n", leg2.min_val);
-% fprintf("Departure:   MJD2000 %.2f\n", leg2.mjd_opt_dep_grid);
-% fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", leg2.date_d);
-% fprintf("Arrival:     MJD2000 %.2f\n", leg2.mjd_opt_arr_grid);
-% fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", leg2.date_a);
-% fprintf("Total ToF (days):    %.2f\n", leg2.tof_opt_grid);
 % 
 % %% 5. Plot the transfer trajectory for this mission
 % % --- set up times and options ---
