@@ -68,7 +68,7 @@ clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 100;
+steps = 1000;
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -195,41 +195,48 @@ find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A);
 v_minus_norm = vecnorm(v_minus_list, 2, 3);
 v_plus_norm = vecnorm(v_plus_list, 2, 3);
 
-rp_list = NaN(steps, steps);
-rp_list_low = NaN(steps, steps);
-rp_list_broken = NaN(steps, steps);
+rp_list = NaN(size(turn_angle));
+rp_list_low = NaN(size(turn_angle));
+rp_list_broken = NaN(size(turn_angle));
 
-turn_angle = NaN(steps, steps);
+turn_angle = NaN(steps, steps); tic
 for i = 1:size(v_plus_list, 1)
     for j = 1:size(v_plus_list, 2)
         turn_angle(i, j) = ...
             acos(dot(v_minus_list(i, j, :), v_plus_list(i, j, :)) / ...
             (v_minus_norm(i, j) * v_plus_norm(i, j)));
     end
-end
+end; toc
+valid_indices = find(~isnan(turn_angle));
 
 h_atm = 500; % Earth atmosphere altitude [km]
 rp_crit = planet_E_r + h_atm; % lowest allowed fly-by radius
 options = optimset('Display','off'); % show iterations
 
 disp("conducting non-linear pericentre radius search"); tic;
-for i = 1:steps
-    for j = 1:steps
-        if isnan(turn_angle(i, j))
-            continue
-        end
-        eq = @(rp) turn_angle(i, j) - ...
-            asin(1 / (1 + (rp * v_plus_norm(i, j)^2) / planet_E_mu)) - ...
-            asin(1 / (1 + (rp * v_minus_norm(i, j)^2) / planet_E_mu));
+for k = 1:length(valid_indices)
+    idx = valid_indices(k);
+    
+    current_turn = turn_angle(idx);
+    v_p_n = v_plus_norm(idx);
+    v_m_n = v_minus_norm(idx);
+    
+    eq = @(rp) current_turn - ...
+        asin(1 / (1 + (rp * v_p_n^2) / planet_E_mu)) - ...
+        asin(1 / (1 + (rp * v_m_n^2) / planet_E_mu));
+    
+    try
         temp_rp = fzero(eq, rp_crit, options);
-        
-        if temp_rp >= rp_crit
-            rp_list(i, j) = temp_rp;
-        elseif temp_rp < rp_crit
-            rp_list_low(i, j) = temp_rp;
-        else
-            rp_list_broken(i, j) = temp_rp;
-        end
+    catch % non-convergence case
+        continue;
+    end
+    
+    if temp_rp >= rp_crit
+        rp_list(idx) = temp_rp;
+    elseif temp_rp < rp_crit
+        rp_list_low(idx) = temp_rp;
+    else
+        rp_list_broken(idx) = temp_rp;
     end
 end
 disp("complete!"); toc;
