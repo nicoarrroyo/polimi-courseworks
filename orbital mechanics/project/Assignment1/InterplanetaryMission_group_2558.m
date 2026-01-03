@@ -68,7 +68,7 @@ clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 1000;
+steps = 100;
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -195,23 +195,18 @@ find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A);
 v_minus_norm = vecnorm(v_minus_list, 2, 3);
 v_plus_norm = vecnorm(v_plus_list, 2, 3);
 
-rp_list = NaN(size(turn_angle));
-rp_list_low = NaN(size(turn_angle));
-rp_list_broken = NaN(size(turn_angle));
+dot_prod = sum(v_minus_list .* v_plus_list, 3);
+turn_angle = acos(dot_prod ./ (v_minus_norm .* v_plus_norm));
 
-turn_angle = NaN(steps, steps); tic
-for i = 1:size(v_plus_list, 1)
-    for j = 1:size(v_plus_list, 2)
-        turn_angle(i, j) = ...
-            acos(dot(v_minus_list(i, j, :), v_plus_list(i, j, :)) / ...
-            (v_minus_norm(i, j) * v_plus_norm(i, j)));
-    end
-end; toc
 valid_indices = find(~isnan(turn_angle));
 
 h_atm = 500; % Earth atmosphere altitude [km]
 rp_crit = planet_E_r + h_atm; % lowest allowed fly-by radius
-options = optimset('Display','off'); % show iterations
+options = optimset("Display", "off"); % suppress warnings and iterations
+
+rp_list = NaN(size(turn_angle));
+rp_list_low = NaN(size(turn_angle));
+rp_list_broken = NaN(size(turn_angle));
 
 disp("conducting non-linear pericentre radius search"); tic;
 for k = 1:length(valid_indices)
