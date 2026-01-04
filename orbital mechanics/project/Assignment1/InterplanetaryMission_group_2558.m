@@ -67,8 +67,8 @@ addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 1000;
-dv_lim = 40; % [km s^-1] should be set as low as possible (reduces computation time)
+steps = 500;
+dv_lim = 50; % [km s^-1] should be set as low as possible (reduces computation time)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -87,8 +87,8 @@ asteroid_name = "N." + asteroid_id;
 
 %% 2. Initialise Arrays
 % --- Time ---
-travel_window_start_date = [2030, 1, 1, 0, 0, 0];
-travel_window_close_date = [2060, 1, 1, 0, 0, 0];
+travel_window_start_date = [2050, 1, 1, 0, 0, 0];
+travel_window_close_date = [2052, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -191,119 +191,50 @@ porkchop_plot( ...
     dep_times_E, ...
     arr_times_A);
 
-%% === STITCHING & OPTIMISATION === %%
-% This section replaces the manual "Manouvre 2.2" and "Manouvre 3" checks.
-% It uses the grid search results as a starting point to find the exact 
-% continuous trajectory.
+%% Manouvre 2.2: Gravity Assist at Earth
+v_minus_norm = vecnorm(v_minus_list, 2, 3);
+v_plus_norm = vecnorm(v_plus_list, 2, 3);
 
-fprintf("\n=== INITIALISING GLOBAL OPTIMISER ===\n");
+dot_prod = sum(v_minus_list .* v_plus_list, 3);
+turn_angle = acos(dot_prod ./ (v_minus_norm .* v_plus_norm));
 
-% 1. Extract Best Dates from Grid Search Results
-% (We re-find the minimum indices here to capture the specific dates)
+valid_indices = find(~isnan(turn_angle));
 
-% --- Leg 1 Best Guess ---
-[min_val1, idx1] = min(dv_grid1_norm(:));
-[r1, c1] = ind2sub(size(dv_grid1_norm), idx1);
-t_dep_M_guess = dep_times_M(c1);
-t_arr_E_guess = arr_times_E(r1);
+h_atm = 500; % Earth atmosphere altitude [km]
+rp_crit = planet_E_r + h_atm; % lowest allowed fly-by radius
+options = optimset("Display", "off"); % suppress warnings and iterations
 
-% --- Leg 2 Best Guess ---
-[min_val2, idx2] = min(dv_grid2_norm(:));
-[r2, c2] = ind2sub(size(dv_grid2_norm), idx2);
-t_dep_E_guess = dep_times_E(c2);
-t_arr_A_guess = arr_times_A(r2);
+rp_list = NaN(size(turn_angle));
+rp_list_low = NaN(size(turn_angle));
+rp_list_broken = NaN(size(turn_angle));
 
-% 2. Create the "Stitched" Initial Guess (x0)
-% We average the arrival at Earth (Leg 1) and Departure from Earth (Leg 2)
-% to find a single "Flyby Date".
-t_flyby_guess = (t_arr_E_guess + t_dep_E_guess) / 2;
-
-x0 = [t_dep_M_guess, t_flyby_guess, t_arr_A_guess];
-
-fprintf("Initial Guess Dates [MJD2000]:\n");
-fprintf("Dep Mercury: %.2f\n   Flyby Earth: %.2f\n   Arr Asteroid: %.2f\n", x0);
-
-% 3. Run the Optimiser
-% We define a handle to the cost function below, passing all fixed constants.
-cost_func = @(x) mission_cost(x, planet_M_id, planet_E_id, asteroid_id, mu_sun, planet_E_r, planet_E_mu);
-
-% Options for fminsearch (display iterations so you can see progress)
-options = optimset('Display', 'off', 'TolX', 1e-4, 'MaxFunEvals', 1500);
-
-fprintf("\nRunning fminsearch (Nelder-Mead)...\n");
-tic;
-[x_opt, min_dv_total] = fminsearch(cost_func, x0, options);
-toc;
-
-%% === FINAL OUTPUT === %%
-
-% Convert optimised MJD back to Dates for readability
-date_dep = mjd20002date(x_opt(1));
-date_fb  = mjd20002date(x_opt(2));
-date_arr = mjd20002date(x_opt(3));
-
-fprintf("\n============================================\n");
-fprintf("      MISSION OPTIMISATION COMPLETE       \n");
-fprintf("============================================\n");
-fprintf("Total Mission Delta-V: %.4f km/s\n", min_dv_total);
-fprintf("--------------------------------------------\n");
-fprintf("Departure (Mercury):   %s (MJD %.2f)\n", datestr(date_dep), x_opt(1));
-fprintf("Flyby (Earth):         %s (MJD %.2f)\n", datestr(date_fb), x_opt(2));
-fprintf("Arrival (Asteroid):    %s (MJD %.2f)\n", datestr(date_arr), x_opt(3));
-fprintf("============================================\n");
-
-% -----------------------------------------------------------
-% LOCAL FUNCTION: Mission Cost Calculator
-% -----------------------------------------------------------
-function J = mission_cost(x, id_dep, id_fb, id_arr, mu, R_planet_fb, mu_planet_fb)
-    % Unpack decision vector
-    t1 = x(1); % Departure
-    t2 = x(2); % Flyby
-    t3 = x(3); % Arrival
+fprintf("\nconducting non-linear pericentre radius search... "); tic
+for k = 1:length(valid_indices)
+    idx = valid_indices(k);
     
-    % Ensure time moves forward (penalty if t2 < t1 or t3 < t2)
-    if t2 <= t1 || t3 <= t2
-        J = 1e5; return; 
+    current_turn = turn_angle(idx);
+    v_p_n = v_plus_norm(idx);
+    v_m_n = v_minus_norm(idx);
+    
+    eq = @(rp) current_turn - ...
+        asin(1 / (1 + (rp * v_p_n^2) / planet_E_mu)) - ...
+        asin(1 / (1 + (rp * v_m_n^2) / planet_E_mu));
+    
+    try
+        temp_rp = fzero(eq, rp_crit, options);
+    catch % non-convergence case
+        continue;
     end
     
-    % --- 1. Get Ephemerides ---
-    [r1, v1_p] = get_planet_state(t1, id_dep, mu);
-    [r2, v2_p] = get_planet_state(t2, id_fb, mu);
-    [r3, v3_a] = get_asteroid_state(t3, id_arr, mu);
-    
-    % --- 2. Leg 1: Mercury -> Earth ---
-    tof1 = (t2 - t1) * 86400;
-    % Using lambertMR (assuming it's in your path)
-    [~, ~, ~, err1, v1_dep, v1_arr, ~, ~] = lambertMR(r1, r2, tof1, mu, 0, 0, 0, 0);
-    
-    % --- 3. Leg 2: Earth -> Asteroid ---
-    tof2 = (t3 - t2) * 86400;
-    [~, ~, ~, err2, v2_dep, v2_arr, ~, ~] = lambertMR(r2, r3, tof2, mu, 0, 0, 0, 0);
-    
-    if err1 ~= 0 || err2 ~= 0
-        J = 1e5; return; % Penalty for solver failure
+    if temp_rp >= rp_crit
+        rp_list(idx) = temp_rp;
+    elseif temp_rp < rp_crit
+        rp_list_low(idx) = temp_rp;
+    else
+        rp_list_broken(idx) = temp_rp;
     end
-    
-    % --- 4. Compute Costs ---
-    
-    % A. Launch Cost (Relative to Mercury)
-    dv_launch = norm(v1_dep - v1_p);
-    
-    % B. Arrival Cost (Relative to Asteroid)
-    dv_arr = norm(v2_arr - v3_a);
-    
-    % C. Powered Flyby Cost (At Earth)
-    v_inf_in  = v1_arr - v2_p; % Velocity relative to Earth (Incoming)
-    v_inf_out = v2_dep - v2_p; % Velocity relative to Earth (Outgoing)
-    
-    % Check Turn Angle Strategy
-    % For the optimiser, we use a "Powered Flyby Vector Difference" approximation.
-    % This drives the optimiser to align the vectors as much as possible.
-    % (Refining this to a full pericentre burn model can be done, but 
-    % vector difference is smoother for fminsearch convergence).
-    
-    dv_flyby = norm(v_inf_out - v_inf_in);
-    
-    % Total Cost Function
-    J = dv_launch + dv_flyby + dv_arr;
 end
+disp("complete!"); toc
+
+%% Manouvre 3: Rendez-Vous at Asteroid
+
