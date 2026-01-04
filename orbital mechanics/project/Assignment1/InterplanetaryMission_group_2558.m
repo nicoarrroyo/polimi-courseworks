@@ -246,66 +246,16 @@ valid_cols_dv1 = unique(valid_cols_dv1, "stable");
 valid_rows_dv2 = unique(valid_rows_dv2, "stable");
 valid_cols_dv2 = unique(valid_cols_dv2, "stable");
 
-%% approach 1 (slowest)
-tic
-lowest_dvtot1 = 100;
-for j = 1:length(valid_cols_dv1)
-    dv1_idx = valid_cols_dv1(j);
-    dv1_values = dv_grid1_norm(:, dv1_idx);
-    for k = 1:length(valid_rows_dv2)
-        dv2_idx = valid_rows_dv2(k);
-        if dv1_idx >= dv2_idx
-            continue
-        end
-        dv2_values = dv_grid2_norm(dv2_idx, :);
-
-        dvtot_values = min(dv1_values + dv2_values, [], "omitnan");
-        for i = 1:length(dvtot_values)
-            if dvtot_values(i) < lowest_dvtot1
-                lowest_dvtot1 = dvtot_values(i); % Update the lowest total delta-v
-                optimal_M_dep_idx = dv1_idx;
-                optimal_E_dep_idx = dv2_idx;
-            end
-        end
-    end
-end
-toc
-
-%% approach 2
-tic
-lowest_dvtot2 = 100;
-for j = 1:length(valid_cols_dv1)
-    dv1_idx = valid_cols_dv1(j);
-    dv1_values = min(dv_grid1_norm(:, dv1_idx), [], "omitnan");
-    for k = 1:length(valid_rows_dv2)
-        dv2_idx = valid_rows_dv2(k);
-        if dv1_idx >= dv2_idx
-            continue
-        end
-        dv2_values = min(dv_grid2_norm(dv2_idx, :), [], "omitnan");
-
-        dvtot_values = dv1_values + dv2_values;
-        for i = 1:length(dvtot_values)
-            if dvtot_values(i) < lowest_dvtot2
-                lowest_dvtot2 = dvtot_values(i); % Update the lowest total delta-v
-                optimal_M_dep_idx2 = dv1_idx;
-                optimal_E_dep_idx2 = dv2_idx;
-            end
-        end
-    end
-end
-toc
-
-%% approach 3
+% approach 1
 tic
 [cols_min_val, cols_min_idx] = min(dv_grid1_norm(:, valid_cols_dv1), [], 1, "omitnan");
 [rows_min_val, rows_min_idx] = min(dv_grid2_norm(valid_rows_dv2, :), [], 2, "omitnan");
-sum_grid = cols_min_val + rows_min_val;
+sum_grid = rows_min_val + cols_min_val;
 
 [DV1_Indices, DV2_Indices] = meshgrid(valid_cols_dv1, valid_rows_dv2);
-sum_grid(DV1_Indices > DV2_Indices) = Inf;
+sum_grid(DV1_Indices ~= DV2_Indices) = Inf;
 
-[lowest_dvtot3, lin_idx] = min(sum_grid(:), [], "omitnan");
+[lowest_dvtot, lin_idx] = min(sum_grid(:), [], "omitnan");
 [row_pos, col_pos] = ind2sub(size(sum_grid), lin_idx);
 
 optimal_dv1_col = valid_cols_dv1(col_pos);
@@ -313,91 +263,9 @@ optimal_dv2_row = valid_rows_dv2(row_pos);
 
 optimal_dv1_row = cols_min_idx(col_pos);
 optimal_dv2_col = rows_min_idx(row_pos);
-
-optimal_M_dep_idx3 = valid_cols_dv1(col_pos);
-optimal_E_dep_idx3 = valid_rows_dv2(row_pos);
 toc
 
-%% approach 4
-tic
-[cols_min_val4, cols_min_idx4] = min(dv_grid1_norm(:, valid_cols_dv1), [], 1, "omitnan");
-[rows_min_val4, rows_min_idx4] = min(dv_grid2_norm(valid_rows_dv2, :), [], 2, "omitnan");
-sum_grid4 = rows_min_val4 + cols_min_val4;
-
-[DV1_Indices, DV2_Indices] = meshgrid(valid_cols_dv1, valid_rows_dv2);
-sum_grid4(DV1_Indices > DV2_Indices) = Inf;
-
-[lowest_dvtot4, lin_idx4] = min(sum_grid4(:), [], "omitnan");
-[row_pos4, col_pos4] = ind2sub(size(sum_grid4), lin_idx4);
-
-% --- EXTRACTING ALL 4 INDICES ---
-
-% A. The indices used to SELECT the vectors (What you had before)
-optimal_dv1_col4 = valid_cols_dv1(col_pos4); % The specific Column chosen from Grid 1
-optimal_dv2_row4 = valid_rows_dv2(row_pos4); % The specific Row chosen from Grid 2
-
-% B. The indices "internal" to those vectors (The missing piece)
-% We look up the saved index from step 1 using the winning positions
-optimal_dv1_row4 = cols_min_idx4(col_pos4);   % The specific Row inside Grid 1
-optimal_dv2_col4 = rows_min_idx4(row_pos4);   % The specific Column inside Grid 2
-toc
-
-%% approach 5 (correct?)
-tic
-% 1. Find the Flyby times (indices) that are valid for BOTH legs
-% We only care about indices present in both lists.
-[common_indices, idx_in_dv1, idx_in_dv2] = intersect(valid_cols_dv1, valid_rows_dv2);
-
-if isempty(common_indices)
-    error("No matching arrival/departure times found for an instant flyby.");
-end
-
-% 2. Calculate minimums ONLY for these common flyby times
-% Leg 1: Best Departure from P1 for each specific Arrival at P2
-% 'min' down column (dim 1). Result is 1 x N
-[min_dv1_vals, best_P1_rows] = min(dv_grid1_norm(:, common_indices), [], 1, "omitnan");
-
-% Leg 2: Best Arrival at P3 for each specific Departure from P2
-% 'min' across row (dim 2). Result is N x 1
-[min_dv2_vals, best_P3_cols] = min(dv_grid2_norm(common_indices, :), [], 2, "omitnan");
-
-% 3. Sum the Delta-Vs
-% CRITICAL: Ensure dimensions match for element-wise addition!
-% We want (1xN) + (1xN), NOT (1xN) + (Nx1) which would make a matrix.
-total_dv_list = min_dv1_vals + min_dv2_vals.'; 
-
-% 4. Find the single best flyby time
-[lowest_dvtot5, best_idx_local] = min(total_dv_list, [], "omitnan");
-
-% 5. Map back to the specific indices
-optimal_flyby_idx = common_indices(best_idx_local);
-
-% Retrieve the associated Dep/Arr indices using the local index
-optimal_P1_dep_idx = best_P1_rows(best_idx_local);    % Row of Grid 1
-optimal_P2_idx     = optimal_flyby_idx;               % Col of Grid 1 == Row of Grid 2
-optimal_P3_arr_idx = best_P3_cols(best_idx_local);    % Col of Grid 2
-toc
-
-%% approach 6 (definitely correct (i think))
-tic
-[cols_min_val6, cols_min_idx6] = min(dv_grid1_norm(:, valid_cols_dv1), [], 1, "omitnan");
-[rows_min_val6, rows_min_idx6] = min(dv_grid2_norm(valid_rows_dv2, :), [], 2, "omitnan");
-sum_grid6 = rows_min_val6 + cols_min_val6;
-
-[DV1_Indices, DV2_Indices] = meshgrid(valid_cols_dv1, valid_rows_dv2);
-sum_grid6(DV1_Indices ~= DV2_Indices) = Inf;
-
-[lowest_dvtot6, lin_idx6] = min(sum_grid6(:), [], "omitnan");
-[row_pos6, col_pos6] = ind2sub(size(sum_grid6), lin_idx6);
-
-optimal_dv1_col6 = valid_cols_dv1(col_pos6);
-optimal_dv2_row6 = valid_rows_dv2(row_pos6);
-
-optimal_dv1_row6 = cols_min_idx6(col_pos6);
-optimal_dv2_col6 = rows_min_idx6(row_pos6);
-toc
-
-%% approach 7 (better than 6??)
+% approach 2
 tic
 common_flyby_indices = intersect(valid_cols_dv1, valid_rows_dv2);
 
@@ -405,7 +273,7 @@ common_flyby_indices = intersect(valid_cols_dv1, valid_rows_dv2);
 [dv2_vals, dv2_locs] = min(dv_grid2_norm(common_flyby_indices, :), [], 2, "omitnan");
 
 total_dv_vector = dv1_vals(:)' + dv2_vals(:)'; % force row vectors for element-wise addition
-[lowest_dvtot7, best_idx] = min(total_dv_vector, [], "omitnan");
+[lowest_dvtot2, best_idx] = min(total_dv_vector, [], "omitnan");
 
 optimal_M_dep_idx = dv1_locs(best_idx);            % The row in Grid 1
 optimal_GA_idx = common_flyby_indices(best_idx); % The specific time index (e.g. 129)
