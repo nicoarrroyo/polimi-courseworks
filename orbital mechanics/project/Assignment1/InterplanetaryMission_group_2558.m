@@ -1,8 +1,7 @@
 %% configure paths
 cd = fileparts(mfilename("fullpath")); backs = strfind(cd, "\"); 
-proj_d = cd(1:backs(end)); addpath([proj_d '\student_functions']); 
-addpath([proj_d '\lib']); addpath([proj_d '\lib' '\timeConversion']);
-clear; close all; clc;
+proj_d = cd(1:backs(end)); addpath([proj_d '\lib']); 
+addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 
             %% === STATE 1/6: MERCURY === %%
             % R1 = RM1, V1 = VM1
@@ -68,7 +67,7 @@ clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 1000;
+steps = 200;
 dv_lim = 20; % [km s^-1] should be set as low as possible (reduces computation time)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
@@ -89,7 +88,7 @@ asteroid_name = "N." + asteroid_id;
 %% 2. Initialise Arrays
 % --- Time ---
 travel_window_start_date = [2051, 1, 1, 0, 0, 0];
-travel_window_close_date = [2052, 1, 1, 0, 0, 0];
+travel_window_close_date = [2051, 6, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -104,7 +103,7 @@ RM_list = zeros(steps, 3);
 VM_list = zeros(steps, 3);
 for i = 1:steps
     [RM_list(i, :), VM_list(i, :)] = ...
-        get_planet_state(dep_times_M(i), planet_M_id);
+        get_planet_state(dep_times_M(i), planet_M_id, mu_sun);
 end
 
 % Earth
@@ -112,7 +111,7 @@ RE_list = zeros(steps, 3);
 VE_list = zeros(steps, 3);
 for i = 1:steps
     [RE_list(i, :), VE_list(i, :)] = ...
-        get_planet_state(dep_times_E(i), planet_E_id);
+        get_planet_state(dep_times_E(i), planet_E_id, mu_sun);
 end
 
 % Asteroid
@@ -120,7 +119,7 @@ RA_list = zeros(steps, 3);
 VA_list = zeros(steps, 3);
 for i = 1:steps
     [RA_list(i, :), VA_list(i, :)] = ...
-        get_asteroid_state(arr_times_A(i), asteroid_id);
+        get_asteroid_state(arr_times_A(i), asteroid_id, mu_sun);
 end
 
 % Satellite
@@ -144,38 +143,38 @@ tof_grid2 = NaN(steps, steps); % Leg 2: Earth-Asteroid
 
 %% Manouvre 1: Gravity Assist Injection from Mercury
 % --- Conduct leg 1 grid search ---
-disp("conducting grid search 1 (gravity-assist injection)"); tic
+fprintf("conducting grid search 1 (gravity-assist injection)... "); tic
 
 [V1_list, V2_list, dv_grid1, tof_grid1] = ...
     deep_space_injection(RM_list, VM_list, RE_list, VE_list, ...
     dep_times_M, arr_times_E, steps, 0, dv_lim);
 
-disp("complete!"); toc
+disp("complete!");
 
 % --- Compute dv ---
 dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
 
 % --- Analyse grid search the Mercury-Earth Leg ---
+find_lowest_dv_mission(dv_grid1_norm, dep_times_M, arr_times_E); toc
+
 porkchop_plot( ...
     "Mercury-Earth", ...
     dv_grid1_norm, ...
     dep_times_M, ...
     arr_times_E);
 
-find_lowest_dv_mission(dv_grid1_norm, dep_times_M, arr_times_E);
-
 %% Manouvre 2.1: Lambert Arc from Earth
 % --- Incoming Geocentric Velocity ---
 v_minus_list = V2_list - reshape(VE_list, [size(V2_list, 1), 1, size(V2_list, 3)]);
 
 % --- Conduct leg 2 grid search ---
-disp("conducting grid search 2 (gravity-assist)"); tic
+fprintf("\nconducting grid search 2 (gravity-assist)... "); tic
 
 [V3_list, V4_list, dv_grid2, tof_grid2] = ...
     deep_space_injection(RE_list, VE_list, RA_list, VA_list, ...
     dep_times_E, arr_times_A, steps, 1, dv_lim);
 
-disp("complete"); toc
+disp("complete!");
 
 % --- Compute dv ---
 dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
@@ -184,13 +183,13 @@ dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
 v_plus_list = V3_list - reshape(VE_list, [size(V3_list, 1), 1, size(V3_list, 3)]);
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
+find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A); toc
+
 porkchop_plot( ...
     "Earth-Asteroid", ...
     dv_grid2_norm, ...
     dep_times_E, ...
     arr_times_A);
-
-find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A);
 
 %% Manouvre 2.2: Gravity Assist at Earth
 v_minus_norm = vecnorm(v_minus_list, 2, 3);
@@ -209,7 +208,7 @@ rp_list = NaN(size(turn_angle));
 rp_list_low = NaN(size(turn_angle));
 rp_list_broken = NaN(size(turn_angle));
 
-disp("conducting non-linear pericentre radius search"); tic;
+fprintf("\nconducting non-linear pericentre radius search... "); tic
 for k = 1:length(valid_indices)
     idx = valid_indices(k);
     
@@ -235,7 +234,7 @@ for k = 1:length(valid_indices)
         rp_list_broken(idx) = temp_rp;
     end
 end
-disp("complete!"); toc;
+disp("complete!"); toc
 
 %% Manouvre 3: Rendez-Vous at Asteroid
 
