@@ -67,7 +67,7 @@ addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 200;
+steps = 100;
 dv_lim = 50; % [km s^-1] should be set as low as possible (reduces computation time)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
@@ -92,10 +92,7 @@ travel_window_close_date = [2052, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
-dep_times_M = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
-arr_times_E = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
-dep_times_E = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
-arr_times_A = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
+time_list = linspace(travel_window_start_mjd2k, travel_window_close_mjd2k, steps);
 
 % --- Heliocentric Position (R) and Velocity (V) ---
 % Mercury
@@ -103,7 +100,7 @@ RM_list = zeros(steps, 3);
 VM_list = zeros(steps, 3);
 for i = 1:steps
     [RM_list(i, :), VM_list(i, :)] = ...
-        get_planet_state(dep_times_M(i), planet_M_id, mu_sun);
+        get_planet_state(time_list(i), planet_M_id, mu_sun);
 end
 
 % Earth
@@ -111,7 +108,7 @@ RE_list = zeros(steps, 3);
 VE_list = zeros(steps, 3);
 for i = 1:steps
     [RE_list(i, :), VE_list(i, :)] = ...
-        get_planet_state(dep_times_E(i), planet_E_id, mu_sun);
+        get_planet_state(time_list(i), planet_E_id, mu_sun);
 end
 
 % Asteroid
@@ -119,7 +116,7 @@ RA_list = zeros(steps, 3);
 VA_list = zeros(steps, 3);
 for i = 1:steps
     [RA_list(i, :), VA_list(i, :)] = ...
-        get_asteroid_state(arr_times_A(i), asteroid_id, mu_sun);
+        get_asteroid_state(time_list(i), asteroid_id, mu_sun);
 end
 
 % Satellite
@@ -147,7 +144,7 @@ fprintf("conducting grid search 1 (gravity-assist injection)... "); tic
 
 [V1_list, V2_list, dv_grid1, tof_grid1] = ...
     deep_space_injection(RM_list, VM_list, RE_list, VE_list, ...
-    dep_times_M, arr_times_E, steps, 0, dv_lim);
+    time_list, time_list, steps, 0, dv_lim);
 
 disp("complete!");
 
@@ -155,13 +152,13 @@ disp("complete!");
 dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
 
 % --- Analyse grid search the Mercury-Earth Leg ---
-find_lowest_dv_mission(dv_grid1_norm, dep_times_M, arr_times_E); toc
+find_lowest_dv_mission(dv_grid1_norm, time_list, time_list); toc
 
 porkchop_plot( ...
     "Mercury-Earth", ...
     dv_grid1_norm, ...
-    dep_times_M, ...
-    arr_times_E);
+    time_list, ...
+    time_list);
 
 %% Manouvre 2.1: Lambert Arc from Earth (includes asteroid Rendez-Vous)
 % --- Incoming Geocentric Velocity ---
@@ -172,7 +169,7 @@ fprintf("\nconducting grid search 2 (gravity-assist)... "); tic
 
 [V3_list, V4_list, dv_grid2, tof_grid2] = ...
     deep_space_injection(RE_list, VE_list, RA_list, VA_list, ...
-    dep_times_E, arr_times_A, steps, 1, dv_lim);
+    time_list, time_list, steps, 1, dv_lim);
 
 disp("complete!");
 
@@ -183,13 +180,13 @@ dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
 v_plus_list = V3_list - reshape(VE_list, [size(V3_list, 1), 1, size(V3_list, 3)]);
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
-find_lowest_dv_mission(dv_grid2_norm, dep_times_E, arr_times_A); toc
+find_lowest_dv_mission(dv_grid2_norm, time_list, time_list); toc
 
 porkchop_plot( ...
     "Earth-Asteroid", ...
     dv_grid2_norm, ...
-    dep_times_E, ...
-    arr_times_A);
+    time_list, ...
+    time_list);
 
 %% Manouvre 2.2: Gravity Assist at Earth
 v_minus_norm = vecnorm(v_minus_list, 2, 3);
@@ -198,7 +195,7 @@ v_plus_norm = vecnorm(v_plus_list, 2, 3);
 dot_prod = sum(v_minus_list .* v_plus_list, 3);
 turn_angle = acos(dot_prod ./ (v_minus_norm .* v_plus_norm));
 
-valid_indices = find(~isnan(turn_angle));
+valid_turn_angle_inidces = find(~isnan(turn_angle));
 
 h_atm = 500; % Earth atmosphere altitude [km]
 rp_crit = planet_E_r + h_atm; % lowest allowed fly-by radius
@@ -209,8 +206,8 @@ rp_list_low = NaN(size(turn_angle));
 rp_list_broken = NaN(size(turn_angle));
 
 fprintf("\nconducting non-linear pericentre radius search... "); tic
-for k = 1:length(valid_indices)
-    idx = valid_indices(k);
+for k = 1:length(valid_turn_angle_inidces)
+    idx = valid_turn_angle_inidces(k);
     
     current_turn = turn_angle(idx);
     v_p_n = v_plus_norm(idx);
@@ -237,36 +234,12 @@ end
 disp("complete!"); toc
 
 %% 3. Stitching
-disp("stitching solutions together")
-[valid_rows_dv1, valid_cols_dv1] = find(~isnan(dv_grid1_norm));
-valid_rows_dv1 = unique(valid_rows_dv1, "stable");
+[~, valid_cols_dv1] = find(~isnan(dv_grid1_norm));
 valid_cols_dv1 = unique(valid_cols_dv1, "stable");
 
-[valid_rows_dv2, valid_cols_dv2] = find(~isnan(dv_grid2_norm));
+[valid_rows_dv2, ~] = find(~isnan(dv_grid2_norm));
 valid_rows_dv2 = unique(valid_rows_dv2, "stable");
-valid_cols_dv2 = unique(valid_cols_dv2, "stable");
 
-% approach 1
-tic
-[cols_min_val, cols_min_idx] = min(dv_grid1_norm(:, valid_cols_dv1), [], 1, "omitnan");
-[rows_min_val, rows_min_idx] = min(dv_grid2_norm(valid_rows_dv2, :), [], 2, "omitnan");
-sum_grid = rows_min_val + cols_min_val;
-
-[DV1_Indices, DV2_Indices] = meshgrid(valid_cols_dv1, valid_rows_dv2);
-sum_grid(DV1_Indices ~= DV2_Indices) = Inf;
-
-[lowest_dvtot, lin_idx] = min(sum_grid(:), [], "omitnan");
-[row_pos, col_pos] = ind2sub(size(sum_grid), lin_idx);
-
-optimal_dv1_col = valid_cols_dv1(col_pos);
-optimal_dv2_row = valid_rows_dv2(row_pos);
-
-optimal_dv1_row = cols_min_idx(col_pos);
-optimal_dv2_col = rows_min_idx(row_pos);
-toc
-
-% approach 2
-tic
 common_flyby_indices = intersect(valid_cols_dv1, valid_rows_dv2);
 
 [dv1_vals, dv1_locs] = min(dv_grid1_norm(:, common_flyby_indices), [], 1, "omitnan");
@@ -275,36 +248,41 @@ common_flyby_indices = intersect(valid_cols_dv1, valid_rows_dv2);
 total_dv_vector = dv1_vals(:)' + dv2_vals(:)'; % force row vectors for element-wise addition
 [lowest_dvtot2, best_idx] = min(total_dv_vector, [], "omitnan");
 
-optimal_M_dep_idx = dv1_locs(best_idx);            % The row in Grid 1
-optimal_GA_idx = common_flyby_indices(best_idx); % The specific time index (e.g. 129)
-optimal_A_arr_idx = dv2_locs(best_idx);           % The col in Grid 2
-toc
+optimal_M_idx = dv1_locs(best_idx); % The row in Grid 1
+optimal_E_idx = common_flyby_indices(best_idx); % The specific time index
+optimal_A_idx = dv2_locs(best_idx); % The col in Grid 2
 
-%% 5. Plot the transfer trajectory for this mission
+%% 4. Plot the transfer trajectory for this mission
 % --- set up times and options ---
-mjd2k1 = dep_times_M(89);
-mjd2k2 = date2mjd2000([2031 10 15 9 41 49]);
+mjd2k1 = time_list(optimal_M_idx);
+mjd2k2 = time_list(optimal_E_idx);
 
 t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
-% --- get planet and asteroid positions ---
-[RD1, VD1] = get_planet_state(mjd2k1, planet_M_id);
-[RGA1, VGA1] = get_planet_state(mjd2k1, planet_E_id);
-[RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_id);
+% --- get planet and asteroid heliocentric positions and velocities ---
+[RM1, VM1] = get_planet_state(mjd2k1, planet_M_id, mu_sun);
+[RE1, VE1] = get_planet_state(mjd2k1, planet_E_id, mu_sun);
+[RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_id, mu_sun);
+
+% --- get satellite heliocentric positions and velocities ---
+
+
+% a. propagate the mercury-earth leg
+y_dep = [RM1, VS1];
 
 % c. propagate the departure planet orbit
-y_D = [RD1, VD1];
-tspan_D = linspace(t1, t2); % integration time span array
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_D, y_D, options);
-R_D = Y(:, 1:3) ./ AU;
+y_M = [RM1, VM1];
+tspan_M = linspace(t1, t2); % integration time span array
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_M, y_M, options);
+R_M = Y(:, 1:3) ./ AU;
 
 % d. propagate the gravity-assist planet orbit
-y_GA = [RGA1, VGA1];
-tspan_GA = linspace(t1, t2); % integration time span array
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_GA, y_GA, options);
-R_GA = Y(:, 1:3) ./ AU;
+y_E = [RE1, VE1];
+tspan_E = linspace(t1, t2); % integration time span array
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_E, y_E, options);
+R_E = Y(:, 1:3) ./ AU;
 
 % e. propagate the arrival asteroid orbit
 y_A = [RA1, VA1];
@@ -320,21 +298,21 @@ figure("Name", "Orbit Plot"); hold on;
 % b. earth-asteroid leg
 
 % c. departure planet orbit
-plot3(R_D(:, 1), R_D(:, 2), R_D(:, 3), "r"); % during transfer
+plot3(R_M(:, 1), R_M(:, 2), R_M(:, 3), "r"); % during transfer
 
 % d. gravity-assist planet orbit
-plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "g"); % during transfer
+plot3(R_E(:, 1), R_E(:, 2), R_E(:, 3), "g"); % during transfer
 
 % e. asteroid orbit
 plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b"); % during transfer
 
 % f. departure planet boundary positions
-scatter3(R_D(1, 1), R_D(1, 2), R_D(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
-scatter3(R_D(end, 1), R_D(end, 2), R_D(end, 3), "filled", "MarkerFaceColor", "r");
+scatter3(R_M(1, 1), R_M(1, 2), R_M(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
+scatter3(R_M(end, 1), R_M(end, 2), R_M(end, 3), "filled", "MarkerFaceColor", "r");
 
 % g. gravity-assist planet boundary positions
-scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
-scatter3(R_GA(end, 1), R_GA(end, 2), R_GA(end, 3), "filled", "MarkerFaceColor", "g");
+scatter3(R_E(1, 1), R_E(1, 2), R_E(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
+scatter3(R_E(end, 1), R_E(end, 2), R_E(end, 3), "filled", "MarkerFaceColor", "g");
 
 % h. asteroid boundary positions
 scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "b");
@@ -360,14 +338,14 @@ legend( ...
 axis equal; grid on; view(3);
 hold off;
 
-%% animated plot
-% 1. Define orbital data
+%% 5. animated plot
+% Define orbital data
 t = linspace(t1, t2);
-x = R_D(:, 1); x2 = R_GA(:, 1); x3 = R_A(:, 1);
-y = R_D(:, 2); y2 = R_GA(:, 2); y3 = R_A(:, 2);
-z = R_D(:, 3); z2 = R_GA(:, 3); z3 = R_A(:, 3);
+x = R_M(:, 1); x2 = R_E(:, 1); x3 = R_A(:, 1);
+y = R_M(:, 2); y2 = R_E(:, 2); y3 = R_A(:, 2);
+z = R_M(:, 3); z2 = R_E(:, 3); z3 = R_A(:, 3);
 
-% 2. Initialise the plot
+% Initialise the plot
 pause(2)
 figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
 xlim([-max([max(abs(x)), max(abs(x2)), max(abs(x3))]), max([max(abs(x)), max(abs(x2)), max(abs(x3))])])
@@ -376,18 +354,18 @@ zlim([-max([max(abs(z)), max(abs(z2)), max(abs(z3))]), max([max(abs(z)), max(abs
 title("Simultaneous Multi-Orbit Animation");
 scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
 
-% 3. Create animated lines
+% Create animated lines
 h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
 h2 = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
 h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
 
-% 4. Add markers for the "heads" of the comets
+% Add markers for the "heads" of the comets
 head1 = plot3(x(1), y(1), z(1), "ro", "MarkerFaceColor", "r");
 head2 = plot3(x2(1), y2(1), z2(1), "go", "MarkerFaceColor", "g");
 head3 = plot3(x3(1), y3(1), z3(1), "bo", "MarkerFaceColor", "b");
 pause(1)
 
-% 5. Animation loop
+% Animation loop
 for i = 1:length(t)
     % Update the tails
     addpoints(h1, x(i), y(i), z(i));
