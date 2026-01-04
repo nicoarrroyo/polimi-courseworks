@@ -401,14 +401,10 @@ toc
 tic
 common_flyby_indices = intersect(valid_cols_dv1, valid_rows_dv2);
 
-if isempty(common_flyby_indices)
-    error("No matching flyby times found between the two grids.");
-end
-
 [dv1_vals, dv1_locs] = min(dv_grid1_norm(:, common_flyby_indices), [], 1, "omitnan");
 [dv2_vals, dv2_locs] = min(dv_grid2_norm(common_flyby_indices, :), [], 2, "omitnan");
 
-total_dv_vector = dv1_vals(:)' + dv2_vals(:)';
+total_dv_vector = dv1_vals(:)' + dv2_vals(:)'; % force row vectors for element-wise addition
 [lowest_dvtot7, best_idx] = min(total_dv_vector, [], "omitnan");
 
 optimal_M_dep_idx = dv1_locs(best_idx);            % The row in Grid 1
