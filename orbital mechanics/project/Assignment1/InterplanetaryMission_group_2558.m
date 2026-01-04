@@ -237,6 +237,7 @@ end
 disp("complete!"); toc
 
 %% 3. Stitching
+disp("stitching solutions together")
 [valid_rows_dv1, valid_cols_dv1] = find(~isnan(dv_grid1_norm));
 valid_rows_dv1 = unique(valid_rows_dv1, "stable");
 valid_cols_dv1 = unique(valid_cols_dv1, "stable");
@@ -245,8 +246,9 @@ valid_cols_dv1 = unique(valid_cols_dv1, "stable");
 valid_rows_dv2 = unique(valid_rows_dv2, "stable");
 valid_cols_dv2 = unique(valid_cols_dv2, "stable");
 
-lowest_dvtot = 100;
-
+% approach 1 (slowest)
+tic
+lowest_dvtot1 = 100;
 for j = 1:length(valid_cols_dv1)
     dv1_idx = valid_cols_dv1(j);
     dv1_values = dv_grid1_norm(:, dv1_idx);
@@ -257,16 +259,64 @@ for j = 1:length(valid_cols_dv1)
         end
         dv2_values = dv_grid2_norm(dv2_idx, :);
 
-        dvtot_values = tsnanmin(dv1_values + dv2_values);
+        dvtot_values = min(dv1_values + dv2_values, [], "omitnan");
         for i = 1:length(dvtot_values)
-            if dvtot_values(i) < lowest_dvtot
-                lowest_dvtot = dvtot_values(i); % Update the lowest total delta-v
+            if dvtot_values(i) < lowest_dvtot1
+                lowest_dvtot1 = dvtot_values(i); % Update the lowest total delta-v
                 optimal_M_dep_idx = dv1_idx;
                 optimal_E_dep_idx = dv2_idx;
             end
         end
     end
 end
+toc
+
+% approach 2
+tic
+lowest_dvtot2 = 100;
+for j = 1:length(valid_cols_dv1)
+    dv1_idx = valid_cols_dv1(j);
+    dv1_values = min(dv_grid1_norm(:, dv1_idx), [], "omitnan");
+    for k = 1:length(valid_rows_dv2)
+        dv2_idx = valid_rows_dv2(k);
+        if dv1_idx >= dv2_idx
+            continue
+        end
+        dv2_values = min(dv_grid2_norm(dv2_idx, :), [], "omitnan");
+
+        dvtot_values = dv1_values + dv2_values;
+        for i = 1:length(dvtot_values)
+            if dvtot_values(i) < lowest_dvtot2
+                lowest_dvtot2 = dvtot_values(i); % Update the lowest total delta-v
+                optimal_M_dep_idx = dv1_idx;
+                optimal_E_dep_idx = dv2_idx;
+            end
+        end
+    end
+end
+toc
+
+% approach 3 (fastest)
+tic
+[cols_min_val, cols_min_idx] = min(dv_grid1_norm(:, valid_cols_dv1), [], 1, "omitnan");
+[rows_min_val, rows_min_idx] = min(dv_grid2_norm(valid_rows_dv2, :), [], 2, "omitnan");
+sum_grid = cols_min_val + rows_min_val;
+
+[DV1_Indices, DV2_Indices] = meshgrid(valid_cols_dv1, valid_rows_dv2);
+sum_grid(DV1_Indices > DV2_Indices) = Inf;
+
+[lowest_dvtot3, lin_idx] = min(sum_grid(:), [], "omitnan");
+[row_pos, col_pos] = ind2sub(size(sum_grid), lin_idx);
+
+optimal_dv1_col = valid_cols_dv1(col_pos);
+optimal_dv2_row = valid_rows_dv2(row_pos);
+
+optimal_dv1_row = cols_min_idx(row_pos);
+optimal_dv2_col = rows_min_idx(col_pos);
+
+optimal_M_dep_idx3 = valid_cols_dv1(col_pos);
+optimal_E_dep_idx3 = valid_rows_dv2(row_pos);
+toc
 
 %% 5. Plot the transfer trajectory for this mission
 % --- set up times and options ---
