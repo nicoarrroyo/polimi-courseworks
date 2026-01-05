@@ -195,9 +195,9 @@ V_planet = zeros(num_candidates, 3); % (earth)
 
 for k = 1:num_candidates % THIS IS WRONG THIS IS WRONG THIS IS WRONG THIS IS WRONG THIS IS WRONG
     t_idx = common_flyby_indices(k);
-    V_minus(t_idx, :) = reshape(V2_list(dv1_locs(k), t_idx, :), 1, 3);
-    V_plus(t_idx, :) = reshape(V3_list(t_idx, dv2_locs(k), :), 1, 3);
-    V_planet(t_idx, :) = reshape(VE_list(t_idx, :), 1, 3);
+    V_minus = reshape(V2_list(dv1_locs(k), t_idx, :), 1, 3);
+    V_plus = reshape(V3_list(t_idx, dv2_locs(k), :), 1, 3);
+    V_planet = reshape(VE_list(t_idx, :), 1, 3);
 end
 
 v_inf_minus = V_minus - V_planet;
