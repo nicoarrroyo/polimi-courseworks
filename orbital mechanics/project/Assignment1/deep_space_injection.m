@@ -80,20 +80,17 @@ for i = 1:steps
             continue
         end
 
-        dv_dep_vec = temp_V1 - V_dep_list(i, :);
-        dv_arr_vec = temp_V2 - V_arr_list(j, :);
-
         % check for full lambert or only direct transfer
         if full_lambert == 1
-            temp_dv = norm(dv_dep_vec) + norm(dv_arr_vec);
+            temp_dv = (temp_V1 - V_dep_list(i, :)) + (temp_V2 - V_arr_list(j, :));
         elseif full_lambert == 0
-            temp_dv = norm(dv_dep_vec);
+            temp_dv = temp_V1 - V_dep_list(i, :);
         else
             continue
         end
 
         % check for reasonable delta-v
-        if temp_dv > dv_lim
+        if norm(temp_dv) > dv_lim
             continue
         end
 
