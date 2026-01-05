@@ -68,7 +68,7 @@ for i = 1:steps
         % check for arrival being after departure
         temp_t2 = arr_times(j) * 24 * 3600;
         temp_tof = temp_t2 - temp_t1;
-        if temp_tof <= 0
+        if temp_tof <= (30*24*3600) % minimum time for tof
             continue
         end
 
@@ -80,17 +80,20 @@ for i = 1:steps
             continue
         end
 
+        dv_dep_vec = temp_V1 - V_dep_list(i, :);
+        dv_arr_vec = temp_V2 - V_arr_list(j, :);
+
         % check for full lambert or only direct transfer
         if full_lambert == 1
-            temp_dv = (temp_V1 - V_dep_list(i, :)) + (temp_V2 - V_arr_list(i, :));
+            temp_dv = norm(dv_dep_vec) + norm(dv_arr_vec);
         elseif full_lambert == 0
-            temp_dv = temp_V1 - V_dep_list(i, :);
+            temp_dv = norm(dv_dep_vec);
         else
             continue
         end
 
         % check for reasonable delta-v
-        if norm(temp_dv) > dv_lim
+        if temp_dv > dv_lim
             continue
         end
 
