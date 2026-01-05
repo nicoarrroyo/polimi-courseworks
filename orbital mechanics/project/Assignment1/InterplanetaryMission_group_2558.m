@@ -239,6 +239,7 @@ mjd2k3 = time_list(optimal_A_idx);
 t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
 t3 = mjd2k3 * 24 * 3600;
+t_full = linspace(t1, t3, steps);
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % --- get planet and asteroid heliocentric positions and velocities ---
@@ -255,32 +256,29 @@ VSE = reshape(V3_list(optimal_E_idx, optimal_A_idx, :), [1, 3]); % at earth (aft
 
 % a. propagate the satellite's mercury-earth leg
 y_dep = [RSM, VSM];
-tspan_dep = linspace(t1, t2, steps/2); % integration time span array
+tspan_dep = t_full(t_full <= t2); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_dep, y_dep, options);
 R_dep = Y(:, 1:3) ./ AU;
 
 % b. propagate the satellite's earth-asteroid leg
 y_GA = [RSE, VSE];
-tspan_GA = linspace(t2, t3, steps/2); % integration time span array
+tspan_GA = t_full(t_full > t2); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_GA, y_GA, options);
 R_GA = Y(:, 1:3) ./ AU;
 
 % c. propagate the departure planet orbit
 y_M = [RM1, VM1];
-tspan_M = linspace(t1, t3, steps); % integration time span array
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_M, y_M, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), t_full, y_M, options);
 R_M = Y(:, 1:3) ./ AU;
 
 % d. propagate the gravity-assist planet orbit
 y_E = [RE1, VE1];
-tspan_E = linspace(t1, t3, steps); % integration time span array
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_E, y_E, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), t_full, y_E, options);
 R_E = Y(:, 1:3) ./ AU;
 
 % e. propagate the arrival asteroid orbit
 y_A = [RA1, VA1];
-tspan_A = linspace(t1, t3, steps); % integration time span array
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_A, y_A, options);
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), t_full, y_A, options);
 R_A = Y(:, 1:3) ./ AU;
 
 % --- plot ---
@@ -337,7 +335,6 @@ hold off;
 
 %% 5. animated plot
 % Define orbital data
-t = linspace(t1, t3, steps);
 xM = R_M(:, 1); xE = R_E(:, 1); xA = R_A(:, 1); xS = [R_dep(:, 1); R_GA(:, 1);];
 yM = R_M(:, 2); yE = R_E(:, 2); yA = R_A(:, 2); yS = [R_dep(:, 2); R_GA(:, 2);];
 zM = R_M(:, 3); zE = R_E(:, 3); zA = R_A(:, 3); zS = [R_dep(:, 3); R_GA(:, 3);];
@@ -365,7 +362,7 @@ headS = plot3(xS(1), yS(1), zS(1), "yo", "MarkerFaceColor", "y");
 pause(1)
 
 % Animation loop
-for i = 1:length(t)
+for i = 1:length(t_full)
     % Update the tails
     addpoints(hM, xM(i), yM(i), zM(i));
     addpoints(hE, xE(i), yE(i), zE(i));
