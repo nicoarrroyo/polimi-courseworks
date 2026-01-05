@@ -256,9 +256,11 @@ optimal_A_idx = dv2_locs(best_idx); % The col in Grid 2
 % --- set up times and options ---
 mjd2k1 = time_list(optimal_M_idx);
 mjd2k2 = time_list(optimal_E_idx);
+mjd2k3 = time_list(optimal_A_idx);
 
 t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
+t3 = mjd2k3 * 24 * 3600;
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % --- get planet and asteroid heliocentric positions and velocities ---
@@ -267,26 +269,36 @@ options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 [RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_id, mu_sun);
 
 % --- get satellite heliocentric positions and velocities ---
+VSM = reshape(V1_list(optimal_M_idx, optimal_E_idx, :), [1, 3]); % at mercury
+VSE = reshape(V3_list(optimal_E_idx, optimal_A_idx, :), [1, 3]); % at earth (after GA)
 
+% a. propagate the satellite's mercury-earth leg
+y_dep = [RM1, VSM];
+tspan_dep = linspace(t1, t2); % integration time span array
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_dep, y_dep, options);
+R_dep = Y(:, 1:3) ./ AU;
 
-% a. propagate the mercury-earth leg
-y_dep = [RM1, VS1];
+% b. propagate the satellite's earth-asteroid leg
+y_GA = [RM1, VSE];
+tspan_GA = linspace(t2, t3); % integration time span array
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_GA, y_GA, options);
+R_GA = Y(:, 1:3) ./ AU;
 
 % c. propagate the departure planet orbit
 y_M = [RM1, VM1];
-tspan_M = linspace(t1, t2); % integration time span array
+tspan_M = linspace(t1, t3); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_M, y_M, options);
 R_M = Y(:, 1:3) ./ AU;
 
 % d. propagate the gravity-assist planet orbit
 y_E = [RE1, VE1];
-tspan_E = linspace(t1, t2); % integration time span array
+tspan_E = linspace(t1, t3); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_E, y_E, options);
 R_E = Y(:, 1:3) ./ AU;
 
 % e. propagate the arrival asteroid orbit
 y_A = [RA1, VA1];
-tspan_A = linspace(t1, t2); % integration time span array
+tspan_A = linspace(t1, t3); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_A, y_A, options);
 R_A = Y(:, 1:3) ./ AU;
 
@@ -294,13 +306,15 @@ R_A = Y(:, 1:3) ./ AU;
 figure("Name", "Orbit Plot"); hold on;
 
 % a. mercury-earth leg
+plot3(R_dep(:, 1), R_dep(:, 2), R_dep(:, 3), "y"); % during transfer
 
 % b. earth-asteroid leg
+plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "y"); % during transfer
 
-% c. departure planet orbit
+% c. planet earth orbit
 plot3(R_M(:, 1), R_M(:, 2), R_M(:, 3), "r"); % during transfer
 
-% d. gravity-assist planet orbit
+% d. planet earth orbit
 plot3(R_E(:, 1), R_E(:, 2), R_E(:, 3), "g"); % during transfer
 
 % e. asteroid orbit
@@ -325,9 +339,11 @@ scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
 xlabel("X [AU]"); ylabel("Y [AU]"); zlabel("Z [AU]");
 title("Two-body problem orbit");
 legend( ...
-    "", ...
-    "", ...
-    "", ...
+    "", ... a. mercury-earth leg
+    "", ... b. earth-asteroid leg
+    "", ... c. planet mercury orbit
+    "", ... d. planet earth orbit
+    "", ... e. asteroid orbit
     "departure planet at departure", ...
     "departure planet at arrival", ...
     "ga planet at departure", ...
