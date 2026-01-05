@@ -14,7 +14,7 @@ clim([dv_min, dv_max]);
 % contour(leg1.dep_times, leg1.arr_times, leg1.tof, leg1.tof_levels, "ShowText", "on");
 
 % --- plot ---
-colorbar; grid on; axis equal;
+colorbar; grid on;
 xlabel("Departure Time (MJD2000)");
 ylabel("Arrival Time (MJD2000)");
 title("Δv_{tot}");
