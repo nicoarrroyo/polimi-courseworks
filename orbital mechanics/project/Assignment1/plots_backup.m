@@ -780,22 +780,22 @@ R_A = Y(:, 1:3) ./ AU;
 % --- plot ---
 figure("Name", "Orbit Plot"); hold on;
 % a. mercury-earth leg
-plot3(R_dep(:, 1), R_dep(:, 2), R_dep(:, 3), "y--"); % during transfer
+plot3(R_dep(:, 1), R_dep(:, 2), R_dep(:, 3), "y--");
 
 % b. earth-asteroid leg
-plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "y"); % during transfer
+plot3(R_GA(:, 1), R_GA(:, 2), R_GA(:, 3), "y");
 
 % c. further asteroid propagation leg
-plot3(R_rv(:, 1), R_rv(:, 2), R_rv(:, 3), "y"); % during transfer
+plot3(R_rv(:, 1), R_rv(:, 2), R_rv(:, 3), "y");
 
 % d. planet earth orbit
-plot3(R_M(:, 1), R_M(:, 2), R_M(:, 3), "r"); % during transfer
+plot3(R_M(:, 1), R_M(:, 2), R_M(:, 3), "r");
 
 % e. planet earth orbit
-plot3(R_E(:, 1), R_E(:, 2), R_E(:, 3), "g"); % during transfer
+plot3(R_E(:, 1), R_E(:, 2), R_E(:, 3), "g");
 
 % f. asteroid orbit
-plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b"); % during transfer
+plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b");
 
 % g. planet mercury important positions (departure
 scatter3(R_M(1, 1), R_M(1, 2), R_M(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
@@ -923,46 +923,30 @@ title("Powered Earth Fly-by Trajectory");
 grid on; axis equal; hold off;
 
 %% === part 5 (additional) ===
-% i want to plot the heliocentric trajectory too
 figure("Name", "Heliocentric Powered Earth Fly-By"); hold on;
 steps = 1000;
 tspan_helio = linspace(0, 60*60*24*30, steps);
 
-% --- plot position of earth during fly-by ---
-y = [RE1 VE1];
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -tspan_helio, y, options);
-R_E_minus = Y(:, 1:3);
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 9*tspan_helio, y, options);
-R_E_plus = Y(:, 1:3);
-plot3(R_E_minus(:, 1), R_E_minus(:, 2), R_E_minus(:, 3), "g");
-plot3(R_E_plus(:, 1), R_E_plus(:, 2), R_E_plus(:, 3), "g");
-scatter3(RSE(1), RSE(2), RSE(3), "filled", "g");
-
 % --- plot earth surface texture ---
 earth_img = imread("EarthTexture.jpg");
 [x_earth, y_earth, z_earth] = sphere(50);
-surface(x_earth, y_earth, -z_earth, "FaceColor", ...
-    "texturemap", "CData", earth_img, "EdgeColor", "none")
+surface( ...
+    x_earth * R_earth * 2000 + RSE(1), ...
+    y_earth * R_earth * 2000 + RSE(2), ...
+    -(z_earth * R_earth * 2000 + RSE(3)), ...
+    "FaceColor", "texturemap", "CData", earth_img, "EdgeColor", "none")
 
-% --- propagate and plot incoming heliocentric arc ---
-% y = [RSE vf1_opt];
-% [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), -5*tspan_helio, y, options);
-% R_minus = Y(:, 1:3);
-% plot3(R_minus(:, 1), R_minus(:, 2), R_minus(:, 3), "r")
-R_dep = R_dep .* AU;
-plot3(R_dep(:, 1), R_dep(:, 2), R_dep(:, 3), "y--"); % incoming trajectory
+% --- plot incoming heliocentric arc ---
+plot3(R_dep(:, 1).*AU, R_dep(:, 2).*AU, R_dep(:, 3).*AU); % incoming trajectory
 
-% --- propagate and plot outgoing heliocentric arc ---
-y = [RSE VSE];
-[~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), 5*tspan_helio, y, options);
-R_plus = Y(:, 1:3);
-plot3(R_plus(:, 1), R_plus(:, 2), R_plus(:, 3), "y") % outgoing trajectory
+% --- plot outgoing heliocentric arc ---
+plot3(R_GA(:, 1).*AU, R_GA(:, 2).*AU, R_GA(:, 3).*AU); % outgoing trajectory
 
 % --- plot sun ---
-scatter3(0, 0, 0, "filled", "y");
+scatter3(0, 0, 0, 500, "y", "filled");
 
 % --- finish up plot properties ---
-legend("", "", "Earth", "Incoming Trajectory", "Outgoing Trajectory", "Sun")
+legend("Earth", "Incoming Trajectory", "Outgoing Trajectory", "Sun")
 xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
 title("Powered Earth Fly-by Trajectory");
 grid on; axis equal; hold off;
@@ -988,7 +972,7 @@ grid on; axis equal; hold off;
 % FATTO plot 3D total solution 
 % FATTO FILMATO CLAMOROSO (da lasciare solo su matlab, ma da mettere
 % assolutamente)
-% plot hyperbola
+% FATTO plot hyperbola
 % commentare e descrivere come vogliono loro tutte le funzioni:
 % - dV_powered_GA
 % - delta_powered_GA
