@@ -1,6 +1,6 @@
 function [V_out_list, V_in_list, dv_array, tof_array] = ...
     deep_space_injection(R_dep_list, V_dep_list, R_arr_list, V_arr_list, ...
-    dep_times, arr_times, steps, full_lambert, dv_lim)
+    dep_times, arr_times, steps, dv_lim)
 
 % FUNCTIONNAME Brief one-line description of what the function does.
 %
@@ -61,42 +61,37 @@ dv_array = NaN(steps, steps, 3);
 tof_array = NaN(steps, steps, 3);
 
 for i = 1:steps
-    temp_t1 = dep_times(i) * 24 * 3600;
-    temp_R1 = R_dep_list(i, :);
+    t1 = dep_times(i) * 24 * 3600;
+    R1 = R_dep_list(i, :);
     
     for j = 1:steps
+        t2 = arr_times(j) * 24 * 3600;
+        tof = t2 - t1;
+
         % check for arrival being after departure
-        temp_t2 = arr_times(j) * 24 * 3600;
-        temp_tof = temp_t2 - temp_t1;
-        if temp_tof <= (30*24*3600) % minimum time for tof
+        if tof <= (30*24*3600) % minimum time for tof
             continue
         end
 
+        R2 = R_arr_list(j, :);
+        [~, ~, ~, ERROR, V1, V2, ~, ~] = ...
+            lambertMR(R1, R2, tof, mu_sun, 0, 0, 0, 0);
+        
         % check for valid lambert arc
-        temp_R2 = R_arr_list(j, :);
-        [~, ~, ~, temp_ERROR, temp_V1, temp_V2, ~, ~] = ...
-            lambertMR(temp_R1, temp_R2, temp_tof, mu_sun, full_lambert, 0, 0, 0);
-        if temp_ERROR ~= 0
+        if ERROR ~= 0
             continue
         end
 
-        % check for full lambert or only direct transfer
-        if full_lambert == 1
-            temp_dv = (temp_V1 - V_dep_list(i, :)) + (temp_V2 - V_arr_list(j, :));
-        elseif full_lambert == 0
-            temp_dv = temp_V1 - V_dep_list(i, :);
-        else
-            continue
-        end
+        dv = V1 - V_dep_list(i, :);
 
         % check for reasonable delta-v
-        if norm(temp_dv) > dv_lim
+        if norm(dv) > dv_lim
             continue
         end
 
-        V_out_list(i, j, :) = temp_V1;
-        V_in_list(i, j, :) = temp_V2;
-        dv_array(i, j, :) = temp_dv;
-        tof_array(i, j) = temp_tof;
+        V_out_list(i, j, :) = V1;
+        V_in_list(i, j, :) = V2;
+        dv_array(i, j, :) = dv;
+        tof_array(i, j) = tof;
     end
 end

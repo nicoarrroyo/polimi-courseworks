@@ -16,8 +16,9 @@ fprintf("=== GRID SEARCH RESULTS ===\n");
 fprintf("Min Delta V: %.4f km s^-1\n", min_val);
 fprintf("Departure:   MJD2000 %.2f\n", mjd_opt_dep_grid);
 fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", date_d);
+fprintf("             ROW     %0.f\n", row_idx);
 fprintf("Arrival:     MJD2000 %.2f\n", mjd_opt_arr_grid);
 fprintf("             Date    %.0f %.0f %.0f %.0f %.0f %.0f\n", date_a);
-fprintf("Total ToF (days):    %.2f\n", tof_opt_grid);
-
+fprintf("             COL     %0.f\n", col_idx);
+fprintf("Total ToF (days):      %.2f\n", tof_opt_grid);
 end

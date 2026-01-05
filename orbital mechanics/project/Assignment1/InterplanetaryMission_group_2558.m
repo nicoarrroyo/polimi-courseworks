@@ -67,18 +67,16 @@ addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 % PLACEHOLDER
 
 %% 1. Constants
-steps = 200;
-dv_lim = 50; % [km s^-1] should be set as low as possible (reduces computation time)
+steps = 500;
+dv_lim = 30; % [km s^-1] should be set as low as possible (reduces computation time)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
 
 planet_M_id = 1;
-planet_M_name = "Mercury";
 planet_M_mu = astroConstants(10 + planet_M_id);
 
 planet_E_id = 3;
-planet_E_name = "Earth";
 planet_E_r = astroConstants(20 + planet_E_id);
 planet_E_mu = astroConstants(10 + planet_E_id);
 
@@ -87,8 +85,8 @@ asteroid_name = "N." + asteroid_id;
 
 %% 2. Initialise Arrays
 % --- Time ---
-travel_window_start_date = [2050, 1, 1, 0, 0, 0];
-travel_window_close_date = [2052, 1, 1, 0, 0, 0];
+travel_window_start_date = [2040, 1, 1, 0, 0, 0];
+travel_window_close_date = [2050, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -144,38 +142,34 @@ fprintf("conducting grid search 1 (gravity-assist injection)... "); tic
 
 [V1_list, V2_list, dv_grid1, tof_grid1] = ...
     deep_space_injection(RM_list, VM_list, RE_list, VE_list, ...
-    time_list, time_list, steps, 0, dv_lim);
+    time_list, time_list, steps, dv_lim);
 
 disp("complete!");
 
 % --- Compute dv ---
-dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
+dv_grid1_norm = vecnorm(dv_grid1, 2, 3); toc
 
 % --- Analyse grid search the Mercury-Earth Leg ---
-find_lowest_dv_mission(dv_grid1_norm, time_list, time_list); toc
-
 porkchop_plot( ...
     "Mercury-Earth", ...
     dv_grid1_norm, ...
     time_list, ...
     time_list);
 
-%% Manouvre 2.1: Lambert Arc from Earth (excludes asteroid Rendez-Vous)
+%% Manouvre 2.1: Lambert Arc from Earth
 % --- Conduct leg 2 grid search ---
 fprintf("\nconducting grid search 2 (gravity-assist)... "); tic
 
 [V3_list, V4_list, dv_grid2, tof_grid2] = ...
     deep_space_injection(RE_list, VE_list, RA_list, VA_list, ...
-    time_list, time_list, steps, 0, dv_lim);
+    time_list, time_list, steps, dv_lim);
 
 disp("complete!");
 
 % --- Compute dv ---
-dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
+dv_grid2_norm = vecnorm(dv_grid2, 2, 3); toc
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
-find_lowest_dv_mission(dv_grid2_norm, time_list, time_list); toc
-
 porkchop_plot( ...
     "Earth-Asteroid", ...
     dv_grid2_norm, ...
@@ -226,11 +220,15 @@ is_feasible = delta_crit <= (delta_max + 10^-6); % 10^-6 for fp errors
 %% 3. Stitching
 total_dv_vector = dv1_vals(:)' + dv2_vals(:)'; % force row vectors for element-wise addition
 total_dv_vector(~is_feasible) = Inf;
-[lowest_dvtot2, best_idx] = min(total_dv_vector, [], "omitnan");
+[lowest_dvtot, best_idx] = min(total_dv_vector, [], "omitnan");
 
 optimal_M_idx = dv1_locs(best_idx); % The row in Grid 1
 optimal_E_idx = common_flyby_indices(best_idx); % The specific time index
 optimal_A_idx = dv2_locs(best_idx); % The col in Grid 2
+
+%% Manouvre 3: Asteroid Rendez-Vous
+dv3 = VA_list(optimal_A_idx, :) - reshape(V4_list(optimal_E_idx, optimal_A_idx, :), [1 3]);
+lowest_dvtot = lowest_dvtot + norm(dv3);
 
 %% 4. Plot the transfer trajectory for this mission
 % --- set up times and options ---
@@ -257,31 +255,31 @@ VSE = reshape(V3_list(optimal_E_idx, optimal_A_idx, :), [1, 3]); % at earth (aft
 
 % a. propagate the satellite's mercury-earth leg
 y_dep = [RSM, VSM];
-tspan_dep = linspace(t1, t2); % integration time span array
+tspan_dep = linspace(t1, t2, steps/2); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_dep, y_dep, options);
 R_dep = Y(:, 1:3) ./ AU;
 
 % b. propagate the satellite's earth-asteroid leg
 y_GA = [RSE, VSE];
-tspan_GA = linspace(t2, t3); % integration time span array
+tspan_GA = linspace(t2, t3, steps/2); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_GA, y_GA, options);
 R_GA = Y(:, 1:3) ./ AU;
 
 % c. propagate the departure planet orbit
 y_M = [RM1, VM1];
-tspan_M = linspace(t1, t3); % integration time span array
+tspan_M = linspace(t1, t3, steps); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_M, y_M, options);
 R_M = Y(:, 1:3) ./ AU;
 
 % d. propagate the gravity-assist planet orbit
 y_E = [RE1, VE1];
-tspan_E = linspace(t1, t3); % integration time span array
+tspan_E = linspace(t1, t3, steps); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_E, y_E, options);
 R_E = Y(:, 1:3) ./ AU;
 
 % e. propagate the arrival asteroid orbit
 y_A = [RA1, VA1];
-tspan_A = linspace(t1, t3); % integration time span array
+tspan_A = linspace(t1, t3, steps); % integration time span array
 [~, Y] = ode113(@(t,y) ode_2bp(t,y,mu_sun), tspan_A, y_A, options);
 R_A = Y(:, 1:3) ./ AU;
 
@@ -338,43 +336,47 @@ axis equal; grid on; view(3);
 hold off;
 
 %% 5. animated plot
-% % Define orbital data
-% t = linspace(t1, t2);
-% x = R_M(:, 1); x2 = R_E(:, 1); x3 = R_A(:, 1); 
-% y = R_M(:, 2); y2 = R_E(:, 2); y3 = R_A(:, 2);
-% z = R_M(:, 3); z2 = R_E(:, 3); z3 = R_A(:, 3);
-% 
-% % Initialise the plot
-% pause(2)
-% figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
-% xlim([-max([max(abs(x)), max(abs(x2)), max(abs(x3))]), max([max(abs(x)), max(abs(x2)), max(abs(x3))])])
-% ylim([-max([max(abs(y)), max(abs(y2)), max(abs(y3))]), max([max(abs(y)), max(abs(y2)), max(abs(y3))])])
-% zlim([-max([max(abs(z)), max(abs(z2)), max(abs(z3))]), max([max(abs(z)), max(abs(z2)), max(abs(z3))])])
-% title("Simultaneous Multi-Orbit Animation");
-% scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
-% 
-% % Create animated lines
-% h1 = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
-% h2 = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
-% h3 = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
-% 
-% % Add markers for the "heads" of the comets
-% head1 = plot3(x(1), y(1), z(1), "ro", "MarkerFaceColor", "r");
-% head2 = plot3(x2(1), y2(1), z2(1), "go", "MarkerFaceColor", "g");
-% head3 = plot3(x3(1), y3(1), z3(1), "bo", "MarkerFaceColor", "b");
-% pause(1)
-% 
-% % Animation loop
-% for i = 1:length(t)
-%     % Update the tails
-%     addpoints(h1, x(i), y(i), z(i));
-%     addpoints(h2, x2(i), y2(i), z2(i));
-%     addpoints(h3, x3(i), y3(i), z3(i));
-% 
-%     % Update the heads
-%     set(head1, "XData", x(i), "YData", y(i), "ZData", z(i));
-%     set(head2, "XData", x2(i), "YData", y2(i), "ZData", z2(i));
-%     set(head3, "XData", x3(i), "YData", y3(i), "ZData", z3(i));
-% 
-%     drawnow limitrate; pause(0.05); 
-% end
+% Define orbital data
+t = linspace(t1, t3, steps);
+xM = R_M(:, 1); xE = R_E(:, 1); xA = R_A(:, 1); xS = [R_dep(:, 1); R_GA(:, 1);];
+yM = R_M(:, 2); yE = R_E(:, 2); yA = R_A(:, 2); yS = [R_dep(:, 2); R_GA(:, 2);];
+zM = R_M(:, 3); zE = R_E(:, 3); zA = R_A(:, 3); zS = [R_dep(:, 3); R_GA(:, 3);];
+
+% Initialise the plot
+pause(2)
+figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
+xlim([-max([max(abs(xM)), max(abs(xE)), max(abs(xA))]), max([max(abs(xM)), max(abs(xE)), max(abs(xA))])])
+ylim([-max([max(abs(yM)), max(abs(yE)), max(abs(yA))]), max([max(abs(yM)), max(abs(yE)), max(abs(yA))])])
+zlim([-max([max(abs(zM)), max(abs(zE)), max(abs(zA))]), max([max(abs(zM)), max(abs(zE)), max(abs(zA))])])
+title("Simultaneous Multi-Orbit Animation");
+scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
+
+% Create animated lines
+hM = animatedline("Color", "r", "LineWidth", 1.5, "MaximumNumPoints", inf);
+hE = animatedline("Color", "g", "LineWidth", 1.5, "MaximumNumPoints", inf);
+hA = animatedline("Color", "b", "LineWidth", 1.5, "MaximumNumPoints", inf);
+hS = animatedline("color", "y", "LineWidth", 1.5, "MaximumNumPoints", inf);
+
+% Add markers for the "heads" of the comets
+headM = plot3(xM(1), yM(1), zM(1), "ro", "MarkerFaceColor", "r");
+headE = plot3(xE(1), yE(1), zE(1), "go", "MarkerFaceColor", "g");
+headA = plot3(xA(1), yA(1), zA(1), "bo", "MarkerFaceColor", "b");
+headS = plot3(xS(1), yS(1), zS(1), "yo", "MarkerFaceColor", "y");
+pause(1)
+
+% Animation loop
+for i = 1:length(t)
+    % Update the tails
+    addpoints(hM, xM(i), yM(i), zM(i));
+    addpoints(hE, xE(i), yE(i), zE(i));
+    addpoints(hA, xA(i), yA(i), zA(i));
+    addpoints(hS, xS(i), yS(i), zS(i));
+
+    % Update the heads
+    set(headM, "XData", xM(i), "YData", yM(i), "ZData", zM(i));
+    set(headE, "XData", xE(i), "YData", yE(i), "ZData", zE(i));
+    set(headA, "XData", xA(i), "YData", yA(i), "ZData", zA(i));
+    set(headS, "XData", xS(i), "YData", yS(i), "ZData", zS(i));
+
+    drawnow limitrate; pause(0.05); 
+end
