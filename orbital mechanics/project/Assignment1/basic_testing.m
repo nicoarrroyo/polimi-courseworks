@@ -5,7 +5,7 @@ addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 
 %% 1. Constants
 steps = 200;
-dv_lim = 30; % for a single manouvre [km s^-1] (try to set as low as possible)
+dv_lim = 20; % for a single manouvre [km s^-1] (try to set as low as possible)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -66,8 +66,8 @@ dv_grid1 = NaN(steps, steps, 3);
 dv_grid1_norm = NaN(steps, steps);
 
 % Manouvre 2: Earth-Asteroid Gravity Assist
-dv_grid2 = NaN(steps, steps, 3);
-dv_grid2_norm = NaN(steps, steps);
+dv_grid2 = NaN(steps, steps, steps, 3);
+dv_grid2_norm = NaN(steps, steps, steps);
 
 % Manouvre 3: Asteroid Rendez-Vous
 dv_grid3 = NaN(steps, steps, 3);
@@ -138,7 +138,7 @@ porkchop_plot( ...
 %% Manouvre 3: Lambert Arc from Earth (includes asteroid rendez-vous)
 % manouvre 3 done before manouvre 2 because of problem geometry.
 % --- Conduct leg 2 grid search ---
-fprintf("\nconducting grid search 2 (gravity-assist)... "); tic
+fprintf("\nconducting grid search 2 (asteroid arrival)... "); tic
 
 for i = 1:length(dv_grid1_valid_cols)
     idx = dv_grid1_valid_cols(i);
@@ -196,11 +196,11 @@ porkchop_plot( ...
     time_list);
 
 %% Manouvre 2: Gravity Assist at Earth
+fprintf("\nconducting grid search 2 (asteroid arrival)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
-rp_cube = NaN(steps, steps, steps);
+% rp_cube = NaN(steps, steps, steps);
 
-tic
 for i = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     ii = possible_flyby_idxs(i);
     V_planet = VE_list(ii, :);
@@ -231,66 +231,82 @@ for i = 1:length(possible_flyby_idxs) % for each valid "being at earth"
             if delta >= delta_crit || isnan(delta)
                 continue
             end
-            eq = @(rp) delta - ...
-                asin(1 / (1 + (rp * v_inf_plus_norm^2) / planet_E_mu)) - ...
-                asin(1 / (1 + (rp * v_inf_minus_norm^2) / planet_E_mu));
-            rp_ans = fzero(eq, rp_crit, optimset("Display", "off"));
-            
-            if rp_ans < rp_crit || ~isreal(rp_ans)
+
+            % eq = @(rp) delta - ...
+            %     asin(1 / (1 + (rp * v_inf_plus_norm^2) / planet_E_mu)) - ...
+            %     asin(1 / (1 + (rp * v_inf_minus_norm^2) / planet_E_mu));
+            % rp_ans = fzero(eq, rp_crit, optimset("Display", "off"));
+            % 
+            % if rp_ans < rp_crit || ~isreal(rp_ans)
+            %     continue
+            % end
+            % rp_cube(jj, ii, kk) = rp_ans;
+
+            dv = V_plus - V_minus;
+            if norm(dv) > dv_lim
                 continue
             end
-            rp_cube(jj, ii, kk) = rp_ans;
+
+            dv_grid2(jj, ii, kk, :) = dv;
+            dv_grid2_norm(jj, ii, kk) = norm(dv);
         end
     end
 end
-toc
+
+% [dv_grid2_valid_rows, dv_grid2_valid_cols, dv_grid2_valid_tres] = ...
+%     find(~isnan(dv_grid2_norm));
+
+disp("complete!"); toc
+
+%% 3. Stitching
+
 
 %% Manouvre 2: Gravity Assist at Earth
-[~, valid_dep_idx_M] = find(~isnan(dv_grid1_norm)); % departure is the column index
-valid_dep_idx_M = unique(valid_dep_idx_M, "stable");
-
-[valid_arr_idx_A, valid_dep_idx_E] = find(~isnan(dv_grid3_norm)); % arrival is the row index
-valid_dep_idx_E = unique(valid_dep_idx_E, "stable");
-
-possible_flyby_indices = intersect(valid_dep_idx_M, valid_dep_idx_E);
-
-[dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_indices), [], 1, "omitnan");
-[dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_indices, :), [], 2, "omitnan");
-
-V_minus = zeros(length(possible_flyby_indices), 3);
-V_plus = zeros(length(possible_flyby_indices), 3);
-V_planet = zeros(length(possible_flyby_indices), 3); % (earth)
-
-for k = 1:length(possible_flyby_indices)
-    t_idx = possible_flyby_indices(k);
-    V_minus(k, :) = reshape(V2_grid(dv1_locs(k), t_idx, :), 1, 3);
-    V_plus(k, :) = reshape(V3_grid(t_idx, dv3_locs(k), :), 1, 3);
-    V_planet(k, :) = reshape(VE_list(t_idx, :), 1, 3);
-end
-
-v_inf_minus = V_minus - V_planet;
-v_inf_plus = V_plus - V_planet;
-v_inf_minus_norm = vecnorm(v_inf_minus, 2, 2);
-v_inf_plus_norm = vecnorm(v_inf_plus, 2, 2);
-
-dot_prod = sum(v_inf_minus .* v_inf_plus, 2);
-delta = acos(dot_prod ./ (v_inf_minus_norm .* v_inf_plus_norm));
-
-r_crit = planet_E_r + 500; % because h_atm = 500km
-
-term_minus  = 1 ./ (1 + (r_crit .* v_inf_minus_norm.^2) ./ planet_E_mu);
-term_plus = 1 ./ (1 + (r_crit .* v_inf_plus_norm.^2) ./ planet_E_mu);
-
-delta_max = asin(term_minus) + asin(term_plus);
-
-feasibility_flag = delta > (delta_max + 10^-6); % 10^-6 for fp errors
-
-dv_grid2 = V3_grid - V2_grid;
-dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
-mask_invalid = isnan(dv_grid2_norm) | isinf(dv_grid2_norm) | (dv_grid2_norm > dv_lim);
-dv_grid2_norm(mask_invalid) = Inf;
-
-[dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_indices, :), [], 2, "omitnan");
+% [~, valid_dep_idx_M] = find(~isnan(dv_grid1_norm)); % departure is the column index
+% valid_dep_idx_M = unique(valid_dep_idx_M, "stable");
+% 
+% [valid_arr_idx_A, valid_dep_idx_E] = find(~isnan(dv_grid3_norm)); % arrival is the row index
+% valid_dep_idx_E = unique(valid_dep_idx_E, "stable");
+% 
+% possible_flyby_indices = intersect(valid_dep_idx_M, valid_dep_idx_E);
+% 
+% [dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_indices), [], 1, "omitnan");
+% [dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_indices, :), [], 2, "omitnan");
+% 
+% V_minus = zeros(length(possible_flyby_indices), 3);
+% V_plus = zeros(length(possible_flyby_indices), 3);
+% V_planet = zeros(length(possible_flyby_indices), 3); % (earth)
+% 
+% for k = 1:length(possible_flyby_indices)
+%     t_idx = possible_flyby_indices(k);
+%     V_minus(k, :) = reshape(V2_grid(dv1_locs(k), t_idx, :), 1, 3);
+%     V_plus(k, :) = reshape(V3_grid(t_idx, dv3_locs(k), :), 1, 3);
+%     V_planet(k, :) = reshape(VE_list(t_idx, :), 1, 3);
+% end
+% 
+% v_inf_minus = V_minus - V_planet;
+% v_inf_plus = V_plus - V_planet;
+% v_inf_minus_norm = vecnorm(v_inf_minus, 2, 2);
+% v_inf_plus_norm = vecnorm(v_inf_plus, 2, 2);
+% 
+% dot_prod = sum(v_inf_minus .* v_inf_plus, 2);
+% delta = acos(dot_prod ./ (v_inf_minus_norm .* v_inf_plus_norm));
+% 
+% r_crit = planet_E_r + 500; % because h_atm = 500km
+% 
+% term_minus  = 1 ./ (1 + (r_crit .* v_inf_minus_norm.^2) ./ planet_E_mu);
+% term_plus = 1 ./ (1 + (r_crit .* v_inf_plus_norm.^2) ./ planet_E_mu);
+% 
+% delta_max = asin(term_minus) + asin(term_plus);
+% 
+% feasibility_flag = delta > (delta_max + 10^-6); % 10^-6 for fp errors
+% 
+% dv_grid2 = V3_grid - V2_grid;
+% dv_grid2_norm = vecnorm(dv_grid2, 2, 3);
+% mask_invalid = isnan(dv_grid2_norm) | isinf(dv_grid2_norm) | (dv_grid2_norm > dv_lim);
+% dv_grid2_norm(mask_invalid) = Inf;
+% 
+% [dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_indices, :), [], 2, "omitnan");
 
 %% 3. Stitching
 total_dv_vals = dv1_vals(:)' + dv2_vals(:)' + dv3_vals(:)'; % force row vectors for element-wise addition
