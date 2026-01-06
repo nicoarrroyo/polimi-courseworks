@@ -66,8 +66,8 @@ dv_grid1 = NaN(steps, steps, 3);
 dv_grid1_norm = NaN(steps, steps);
 
 % Manouvre 2: Earth-Asteroid Gravity Assist
-dv_grid2 = NaN(steps, steps, steps, 3);
-dv_grid2_norm = NaN(steps, steps, steps);
+dv_grid2 = NaN(steps, steps, 3);
+dv_grid2_norm = NaN(steps, steps);
 
 % Manouvre 3: Asteroid Rendez-Vous
 dv_grid3 = NaN(steps, steps, 3);
@@ -118,7 +118,7 @@ for i = 1:steps
 end
 
 % --- Compute dv ---
-dv_grid1_norm = vecnorm(dv_grid1, 2, 3); toc
+dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
 
 % --- Find valid options ---
 % rows = mercury departure, columns = earth arrival
@@ -126,14 +126,15 @@ dv_grid1_norm = vecnorm(dv_grid1, 2, 3); toc
 dv_grid1_valid_rows = unique(dv_grid1_valid_rows, "stable");
 dv_grid1_valid_cols = unique(dv_grid1_valid_cols, "stable");
 disp("complete!");
-disp("found " + length(dv_grid1_valid_rows) + " valid options out of " + (steps*steps));
+disp("found " + length(dv_grid1_valid_rows)*length(dv_grid1_valid_cols) + " valid options out of " + (steps*steps));
+toc
 
 % --- Analyse grid search the Mercury-Earth Leg ---
-porkchop_plot( ...
-    "Mercury-Earth", ...
-    dv_grid1_norm, ...
-    time_list, ...
-    time_list);
+% porkchop_plot( ...
+%     "Mercury-Earth", ...
+%     dv_grid1_norm, ...
+%     time_list, ...
+%     time_list);
 
 %% Manouvre 3: Lambert Arc from Earth (includes asteroid rendez-vous)
 % manouvre 3 done before manouvre 2 because of problem geometry.
@@ -178,7 +179,7 @@ for i = 1:length(dv_grid1_valid_cols)
 end
 
 % --- Compute dv ---
-dv_grid3_norm = vecnorm(dv_grid3, 2, 3); toc
+dv_grid3_norm = vecnorm(dv_grid3, 2, 3);
 
 % --- Find valid options ---
 % rows = earth departure, columns = asteroid arrival
@@ -186,32 +187,45 @@ dv_grid3_norm = vecnorm(dv_grid3, 2, 3); toc
 dv_grid3_valid_rows = unique(dv_grid3_valid_rows, "stable");
 dv_grid3_valid_cols = unique(dv_grid3_valid_cols, "stable");
 disp("complete!");
-disp("found " + length(dv_grid3_valid_rows) + " valid options out of " + (length(dv_grid1_valid_rows)*steps));
+disp("found " + length(dv_grid3_valid_rows)*length(dv_grid3_valid_cols) + " valid options out of " + (length(dv_grid1_valid_rows)*steps));
+toc
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
-porkchop_plot( ...
-    "Earth-Asteroid", ...
-    dv_grid3_norm, ...
-    time_list, ...
-    time_list);
+% porkchop_plot( ...
+%     "Earth-Asteroid", ...
+%     dv_grid3_norm, ...
+%     time_list, ...
+%     time_list);
 
 %% Manouvre 2: Gravity Assist at Earth
-fprintf("\nconducting grid search 2 (asteroid arrival)... "); tic
+fprintf("\nconducting grid search 3 (flyby)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
 % rp_cube = NaN(steps, steps, steps);
 
-for i = 1:length(possible_flyby_idxs) % for each valid "being at earth"
-    ii = possible_flyby_idxs(i);
-    V_planet = VE_list(ii, :);
-    valid_depart = find(~isnan(V2_grid(:, ii)));
-    for j = 1:length(valid_depart) % for each valid mercury departure
-        jj = valid_depart(j);
-        V_minus = reshape(V2_grid(jj, ii, :), 1, 3);
+for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
+    jj = possible_flyby_idxs(j);
+    V_planet = VE_list(jj, :);
+    valid_depart = find(~isnan(V2_grid(:, jj)));
+    for i = 1:length(valid_depart) % for each valid mercury departure
+        ii = valid_depart(i);
+        V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
+        this_lowest_dv_tot = 1000;
 
         for k = 1:length(dv_grid3_valid_cols) % for each valid asteroid arrival
             kk = dv_grid3_valid_cols(k);
-            V_plus = reshape(V3_grid(ii, kk, :), 1, 3);
+            V_plus = reshape(V3_grid(jj, kk, :), 1, 3);
+
+            dv_fb = V_plus - V_minus;
+            dv_fb_norm = norm(dv_fb);
+            if dv_fb_norm > dv_lim
+                continue
+            end
+
+            dv_tot = dv_fb_norm + dv_grid1_norm(ii, jj) + dv_grid2_norm(jj, kk);
+            if dv_tot > this_lowest_dv_tot
+                continue
+            end
 
             v_inf_minus = V_minus - V_planet;
             v_inf_plus = V_plus - V_planet;
@@ -242,24 +256,18 @@ for i = 1:length(possible_flyby_idxs) % for each valid "being at earth"
             % end
             % rp_cube(jj, ii, kk) = rp_ans;
 
-            dv = V_plus - V_minus;
-            if norm(dv) > dv_lim
-                continue
-            end
-
-            dv_grid2(jj, ii, kk, :) = dv;
-            dv_grid2_norm(jj, ii, kk) = norm(dv);
+            dv_grid2(jj, kk, :) = dv_fb;
+            dv_grid2_norm(jj, kk) = dv_fb_norm;
         end
     end
 end
 
-% [dv_grid2_valid_rows, dv_grid2_valid_cols, dv_grid2_valid_tres] = ...
-%     find(~isnan(dv_grid2_norm));
-
-disp("complete!"); toc
-
-%% 3. Stitching
-
+[dv_grid2_valid_rows, dv_grid2_valid_cols] = find(~isnan(dv_grid2_norm));
+dv_grid2_valid_rows = unique(dv_grid2_valid_rows, "stable");
+dv_grid2_valid_cols = unique(dv_grid2_valid_cols, "stable");
+disp("complete!");
+disp("found " + length(dv_grid2_valid_rows)*length(dv_grid2_valid_cols) + " valid options out of " + (length(dv_grid3_valid_rows)*steps));
+toc
 
 %% Manouvre 2: Gravity Assist at Earth
 % [~, valid_dep_idx_M] = find(~isnan(dv_grid1_norm)); % departure is the column index
@@ -309,8 +317,12 @@ disp("complete!"); toc
 % [dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_indices, :), [], 2, "omitnan");
 
 %% 3. Stitching
+[dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_indices), [], 1, "omitnan");
+[dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_indices, :), [], 2, "omitnan");
+[dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_indices, :), [], 2, "omitnan");
+
 total_dv_vals = dv1_vals(:)' + dv2_vals(:)' + dv3_vals(:)'; % force row vectors for element-wise addition
-total_dv_vals(feasibility_flag) = Inf;
+%total_dv_vals(feasibility_flag) = Inf;
 [lowest_dvtot, best_idx] = min(total_dv_vals, [], "omitnan");
 
 optimal_M_idx = dv1_locs(best_idx); % The row in Grid 1
