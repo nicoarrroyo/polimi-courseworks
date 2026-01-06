@@ -5,7 +5,7 @@ addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 
 %% 1. Constants
 steps = 200;
-dv_lim = 100; % for a single manouvre [km s^-1] (try to set as low as possible)
+dv_lim = 30;
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -23,7 +23,7 @@ asteroid_name = "N." + asteroid_id;
 %% 2. Initialise Arrays
 % --- Time ---
 travel_window_start_date = [2030, 1, 1, 0, 0, 0];
-travel_window_close_date = [2040, 1, 1, 0, 0, 0];
+travel_window_close_date = [2035, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -89,7 +89,7 @@ for i = 1:steps
         tof = t2 - t1;
 
         % check for arrival being after departure
-        if tof <= 0 % minimum time for tof
+        if tof <= (10*24*3600) % minimum time for tof
             continue
         end
 
@@ -150,7 +150,7 @@ for i = 1:length(dv_grid1_valid_cols)
         tof = t2 - t1;
 
         % check for arrival being after departure
-        if tof <= 0 % minimum time for tof
+        if tof <= (10*24*3600) % minimum time for tof
             continue
         end
 
@@ -209,8 +209,13 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     for i = 1:length(valid_depart) % for each valid mercury departure
         ii = valid_depart(i);
         V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
-        this_opt_dv_tot = Inf;
 
+        v_inf_minus = V_minus - V_planet;
+        v_inf_minus_norm = norm(v_inf_minus);
+        e_minus_crit = 1 + rp_crit*v_inf_minus_norm^2/planet_E_mu;
+        delta_minus_crit = 2*asin(1/e_minus_crit);
+
+        this_opt_dv_tot = Inf;
         dv_launch_norm = dv_grid1_norm(ii, jj);
 
         for k = 1:length(dv_grid3_valid_cols) % for each valid asteroid arrival
@@ -228,17 +233,12 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
                 continue
             end
 
-            v_inf_minus = V_minus - V_planet;
             v_inf_plus = V_plus - V_planet;
-
-            v_inf_minus_norm = norm(v_inf_minus);
             v_inf_plus_norm = norm(v_inf_plus);
 
             dot_prod = dot(v_inf_minus, v_inf_plus);
             delta = acos(dot_prod / (v_inf_minus_norm * v_inf_plus_norm));
 
-            e_minus_crit = 1 + rp_crit*v_inf_minus_norm^2/planet_E_mu; % CHECK IF SUPPOSED TO USE VECTORS
-            delta_minus_crit = 2*asin(1/e_minus_crit);
             e_plus_crit = 1 + rp_crit*v_inf_minus_norm^2/planet_E_mu;
             delta_plus_crit = 2*asin(1/e_plus_crit);
             delta_crit = (delta_minus_crit+delta_plus_crit)/2;
@@ -277,14 +277,8 @@ disp("complete!");
 toc
 
 %% 3. Stitching
-[optimal_M_idx, optimal_E_idx1] = find(dv_grid1_norm == opt_dv_launch_norm);
-[optimal_E_idx2, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
-if optimal_E_idx1 ~= optimal_E_idx2
-    disp("alert: something has gone wrong")
-else
-    optimal_E_idx = optimal_E_idx1;
-    clear optimal_E_idx1 optimal_E_idx2
-end
+[optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
+[~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
 
 %% Final Results Output
 fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
