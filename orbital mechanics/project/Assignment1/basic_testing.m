@@ -4,7 +4,7 @@ proj_d = cd(1:backs(end)); addpath([proj_d '\lib']);
 addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 
 %% 1. Constants
-steps = 200;
+steps = 500;
 dv_lim = 20; % for a single manouvre [km s^-1] (try to set as low as possible)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
@@ -23,7 +23,7 @@ asteroid_name = "N." + asteroid_id;
 %% 2. Initialise Arrays
 % --- Time ---
 travel_window_start_date = [2030, 1, 1, 0, 0, 0];
-travel_window_close_date = [2040, 1, 1, 0, 0, 0];
+travel_window_close_date = [2050, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -202,7 +202,7 @@ fprintf("\nconducting grid search 3 (flyby)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
 % rp_cube = NaN(steps, steps, steps);
-
+lowest_dvtot = 1000;
 for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     jj = possible_flyby_idxs(j);
     V_planet = VE_list(jj, :);
@@ -225,6 +225,10 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
             dv_tot = dv_fb_norm + dv_grid1_norm(ii, jj) + dv_grid2_norm(jj, kk);
             if dv_tot > this_lowest_dv_tot
                 continue
+            end
+            if dv_tot < lowest_dvtot
+                lowest_dvtot = dv_tot;
+                optimal_M_idx = ii; optimal_E_idx = jj; optimal_A_idx = kk;
             end
 
             v_inf_minus = V_minus - V_planet;
@@ -317,17 +321,19 @@ toc
 % [dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_indices, :), [], 2, "omitnan");
 
 %% 3. Stitching
-[dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_indices), [], 1, "omitnan");
-[dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_indices, :), [], 2, "omitnan");
-[dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_indices, :), [], 2, "omitnan");
+
+%% 3. Stitching
+[dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_idxs), [], 1, "omitnan");
+[dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_idxs, :), [], 2, "omitnan");
+[dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_idxs, :), [], 2, "omitnan");
 
 total_dv_vals = dv1_vals(:)' + dv2_vals(:)' + dv3_vals(:)'; % force row vectors for element-wise addition
 %total_dv_vals(feasibility_flag) = Inf;
-[lowest_dvtot, best_idx] = min(total_dv_vals, [], "omitnan");
+%[lowest_dvtot, best_idx] = min(total_dv_vals, [], "omitnan");
 
-optimal_M_idx = dv1_locs(best_idx); % The row in Grid 1
-optimal_E_idx = possible_flyby_indices(best_idx); % The specific time index
-optimal_A_idx = dv3_locs(best_idx); % The col in Grid 2
+% optimal_M_idx = dv1_locs(best_idx); % The row in Grid 1
+% optimal_E_idx = possible_flyby_idxs(best_idx); % The specific time index
+% optimal_A_idx = dv3_locs(best_idx); % The col in Grid 2
 
 %% Final Results Output
 fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", lowest_dvtot);
