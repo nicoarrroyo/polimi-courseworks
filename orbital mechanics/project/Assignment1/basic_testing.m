@@ -4,8 +4,8 @@ proj_d = cd(1:backs(end)); addpath([proj_d '\lib']);
 addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 
 %% 1. Constants
-steps = 500;
-dv_lim = 20; % for a single manouvre [km s^-1] (try to set as low as possible)
+steps = 5;
+dv_lim = Inf; % for a single manouvre [km s^-1] (try to set as low as possible)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -201,8 +201,8 @@ toc
 fprintf("\nconducting grid search 3 (flyby)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
-% rp_cube = NaN(steps, steps, steps);
-lowest_dvtot = 1000;
+
+lowest_dvtot_an = Inf;
 for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     jj = possible_flyby_idxs(j);
     V_planet = VE_list(jj, :);
@@ -210,7 +210,9 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     for i = 1:length(valid_depart) % for each valid mercury departure
         ii = valid_depart(i);
         V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
-        this_lowest_dv_tot = 1000;
+        this_lowest_dv_tot = Inf;
+
+        dv_launch_norm = dv_grid1_norm(ii, jj);
 
         for k = 1:length(dv_grid3_valid_cols) % for each valid asteroid arrival
             kk = dv_grid3_valid_cols(k);
@@ -222,13 +224,9 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
                 continue
             end
 
-            dv_tot = dv_fb_norm + dv_grid1_norm(ii, jj) + dv_grid3_norm(jj, kk);
+            dv_tot = dv_launch_norm + dv_fb_norm + dv_grid3_norm(jj, kk);
             if dv_tot > this_lowest_dv_tot
                 continue
-            end
-            if dv_tot < lowest_dvtot
-                lowest_dvtot = dv_tot;
-                optimal_M_idx = ii; optimal_E_idx = jj; optimal_A_idx = kk;
             end
 
             v_inf_minus = V_minus - V_planet;
@@ -246,8 +244,13 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
             delta_plus_crit = 2*asin(1/e_plus_crit);
             delta_crit = (delta_minus_crit+delta_plus_crit)/2;
 
-            if delta >= delta_crit || isnan(delta)
-                continue
+            % if delta >= delta_crit || isnan(delta)
+            %     continue
+            % end
+
+            if dv_tot < lowest_dvtot_an
+                lowest_dvtot_an = dv_tot;
+                optimal_M_idx_an = ii; optimal_E_idx_an = jj; optimal_A_idx_an = kk;
             end
 
             % eq = @(rp) delta - ...
@@ -274,57 +277,109 @@ disp("found " + length(dv_grid2_valid_rows)*length(dv_grid2_valid_cols) + " vali
 toc
 
 %% 3. Stitching
-[dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_idxs), [], 1, "omitnan");
-[dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_idxs, :), [], 2, "omitnan");
-[dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_idxs, :), [], 2, "omitnan");
-
-total_dv_vals = dv1_vals(:)' + dv2_vals(:)' + dv3_vals(:)'; % force row vectors for element-wise addition
-%total_dv_vals(feasibility_flag) = Inf;
-%[lowest_dvtot, best_idx] = min(total_dv_vals, [], "omitnan");
-
-% optimal_M_idx = dv1_locs(best_idx); % The row in Grid 1
+% [dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_idxs), [], 1, "omitnan");
+% [dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_idxs, :), [], 2, "omitnan");
+% [dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_idxs, :), [], 2, "omitnan");
+% [dv1_vals, dv1_idxs] = min(dv_grid1_norm);
+% [dv2_vals, dv2_idxs] = min(dv_grid2_norm);
+% [dv3_vals, dv3_idxs] = min(dv_grid3_norm);
+% 
+% total_dv_vals = dv1_vals(:)' + dv2_vals(:)' + dv3_vals(:)'; % force row vectors for element-wise addition
+% [lowest_dvtot, best_idx] = min(total_dv_vals, [], "omitnan");
+% 
+% dv_gridtot_norm = dv_grid1_norm + dv_grid2_norm + dv_grid3_norm;
+% dv_min_val = min(dv_gridtot_norm(:));
+% [dv_min_row, dv_min_col] = find(dv_gridtot_norm == dv_min_val);
+% 
+% dv_leg1 = dv_grid1_norm;
+% dv_leg2 = dv_grid2_norm + dv_grid3_norm;
+% 
+% possssss = intersect(dv_leg1, dv_leg1);
+% 
+% optimal_M_idx = dv_grid1_valid_rows(best_idx); % The row in Grid 1
 % optimal_E_idx = possible_flyby_idxs(best_idx); % The specific time index
-% optimal_A_idx = dv3_locs(best_idx); % The col in Grid 2
+% optimal_A_idx = dv_grid3_valid_cols(best_idx); % The col in Grid 2
+
+%% 3. Stitching
+% lowest_dvtot_an = 1000;
+% 
+% for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
+%     jj = possible_flyby_idxs(j);
+%     V_planet = VE_list(jj, :);
+%     valid_depart = find(~isnan(V2_grid(:, jj)));
+% 
+%     for i = 1:length(valid_depart) % for each valid mercury departure
+%         ii = valid_depart(i);
+%         V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
+%         this_lowest_dv_tot = 1000;
+% 
+%         for k = 1:length(dv_grid3_valid_cols) % for each valid asteroid arrival
+%             kk = dv_grid3_valid_cols(k);
+%             V_plus = reshape(V3_grid(jj, kk, :), 1, 3);
+% 
+%             dv_fb = V_plus - V_minus;
+%             dv_fb_norm = norm(dv_fb);
+%             if dv_fb_norm > dv_lim
+%                 continue
+%             end
+% 
+%             dv_tot = dv_fb_norm + dv_grid1_norm(ii, jj) + dv_grid3_norm(jj, kk);
+%             if dv_tot > this_lowest_dv_tot
+%                 continue
+%             end
+%             if dv_tot < lowest_dvtot_an
+%                 lowest_dvtot_an = dv_tot;
+%                 optimal_M_idx_an = ii; optimal_E_idx_an = jj; optimal_A_idx_an = kk;
+%             end
+%         end
+%     end
+% end
 
 %% Final Results Output
-fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", lowest_dvtot);
-fprintf("LEG 1 ΔV: %.4f km s^-1\n", dv_grid1_norm(optimal_M_idx, optimal_E_idx));
-fprintf("LEG 2 ΔV: %.4f km s^-1\n", dv_grid2_norm(optimal_E_idx, optimal_A_idx));
-fprintf("LEG 3 ΔV: %.4f km s^-1\n", dv_grid3_norm(optimal_E_idx, optimal_A_idx));
+fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", lowest_dvtot_an);
+fprintf("LEG 1 ΔV: %.4f km s^-1\n", dv_grid1_norm(optimal_M_idx_an, optimal_E_idx_an));
+fprintf("LEG 2 ΔV: %.4f km s^-1\n", dv_grid2_norm(optimal_E_idx_an, optimal_A_idx_an));
+fprintf("LEG 3 ΔV: %.4f km s^-1\n", dv_grid3_norm(optimal_E_idx_an, optimal_A_idx_an));
 
 fprintf("\nOPTIMAL DATES\n")
-fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
-fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
+fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx_an));
+fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx_an)));
 
-fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
-fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
+fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx_an));
+fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx_an)));
 
-fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
-fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
+fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx_an));
+fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx_an)));
 
 %% Plot the transfer trajectory for this mission
 % --- set up times and options ---
+optimal_M_idx = optimal_M_idx_an; optimal_E_idx = optimal_E_idx_an; optimal_A_idx = optimal_A_idx_an;
+mjd2k1 = time_list(optimal_M_idx);
+mjd2k2 = time_list(optimal_E_idx);
+mjd2k3 = time_list(optimal_A_idx);
+
 t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
 t3 = mjd2k3 * 24 * 3600;
 t4 = t3 + (120*24*3600);
-t_full = linspace(t1, t4, 200);
+t_full = linspace(t1, t4, 100);
+
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
 % --- get planet and asteroid heliocentric positions and velocities ---
-[RM1, VM1] = get_planet_state(mjd2k1, 1, mu_sun); % mercury
-[RE1, VE1] = get_planet_state(mjd2k1, 3, mu_sun); % earth
-[RA1, VA1] = get_asteroid_state(mjd2k1, 316801, mu_sun); % asteroid
+[RM1, VM1] = get_planet_state(mjd2k1, planet_M_id, mu_sun); % mercury
+[RE1, VE1] = get_planet_state(mjd2k1, planet_E_id, mu_sun); % earth
+[RA1, VA1] = get_asteroid_state(mjd2k1, asteroid_id, mu_sun); % asteroid
 
 % --- get satellite heliocentric positions and velocities ---
 RSM = RM1;
-VSM = vi1_opt; % at mercury
+VSM = reshape(V1_grid(optimal_M_idx, optimal_E_idx, :), [1, 3]); % at mercury
 
 [RSE, ~] = get_planet_state(mjd2k2, 3, mu_sun);
-VSE = vi2_opt; % at earth (after GA)
+VSE = reshape(V3_grid(optimal_E_idx, optimal_A_idx, :), [1, 3]); % at earth (after GA)
 
 [RSA, ~] = get_asteroid_state(mjd2k3, 316801, mu_sun);
-VSA = vA_opt'; % at asteroid
+VSA = VA_list(optimal_A_idx, :); % at asteroid
 
 % a. propagate the satellite's mercury-earth leg
 y_dep = [RSM, VSM];
@@ -414,59 +469,59 @@ axis equal; grid on; view(3);
 hold off;
 
 %% plot orbit animations
-% Define orbital data
-xM = R_M(:, 1); xE = R_E(:, 1); xA = R_A(:, 1); xS = [R_dep(:, 1); R_GA(:, 1); R_rv(:, 1);];
-yM = R_M(:, 2); yE = R_E(:, 2); yA = R_A(:, 2); yS = [R_dep(:, 2); R_GA(:, 2); R_rv(:, 2);];
-zM = R_M(:, 3); zE = R_E(:, 3); zA = R_A(:, 3); zS = [R_dep(:, 3); R_GA(:, 3); R_rv(:, 3);];
-
-% Initialise the plot
-figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
-maxx = max([max(abs(xM)), max(abs(xE)), max(abs(xA)), max(abs(xS))]);
-maxy = max([max(abs(yM)), max(abs(yE)), max(abs(yA)), max(abs(yS))]);
-maxz = max([max(abs(zM)), max(abs(zE)), max(abs(zA)), max(abs(zS))]);
-xlim([-maxx, maxx]); ylim([-maxy, maxy]); zlim([-maxz, maxz])
-
-scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
-
-% Create animated lines
-hM = animatedline("Color", "r", "MaximumNumPoints", inf);
-hE = animatedline("Color", "g", "MaximumNumPoints", inf);
-hA = animatedline("Color", "b", "MaximumNumPoints", inf);
-hS = animatedline("color", "y", "MaximumNumPoints", inf);
-
-% Add markers for the "heads" of the comets
-headM = plot3(xM(1), yM(1), zM(1), "ro", "MarkerFaceColor", "r");
-headE = plot3(xE(1), yE(1), zE(1), "go", "MarkerFaceColor", "g");
-headA = plot3(xA(1), yA(1), zA(1), "bo", "MarkerFaceColor", "b");
-headS = plot3(xS(1), yS(1), zS(1), "yo", "MarkerFaceColor", "y");
-
-% --- plot properties ---
-title("Simultaneous Multi-Orbit Animation");
-xlabel("X [AU]"); ylabel("Y [AU]"); zlabel("Z [AU]");
-legend( ...
-    "Sun Position", ...
-    "Mercury Orbit", ...
-    "Earth Orbit", ...
-    "Asteroid Orbit", ...
-    "Spacecraft Trajectory" ...
-    );
-
-% Animation loop
-for i = 1:length(t_full)
-    % Update the tails
-    if i == 1
-        pause(2)
-    end
-    addpoints(hM, xM(i), yM(i), zM(i));
-    addpoints(hE, xE(i), yE(i), zE(i));
-    addpoints(hA, xA(i), yA(i), zA(i));
-    addpoints(hS, xS(i), yS(i), zS(i));
-
-    % Update the heads
-    set(headM, "XData", xM(i), "YData", yM(i), "ZData", zM(i));
-    set(headE, "XData", xE(i), "YData", yE(i), "ZData", zE(i));
-    set(headA, "XData", xA(i), "YData", yA(i), "ZData", zA(i));
-    set(headS, "XData", xS(i), "YData", yS(i), "ZData", zS(i));
-
-    drawnow limitrate; pause(0.03); 
-end
+% % Define orbital data
+% xM = R_M(:, 1); xE = R_E(:, 1); xA = R_A(:, 1); xS = [R_dep(:, 1); R_GA(:, 1); R_rv(:, 1);];
+% yM = R_M(:, 2); yE = R_E(:, 2); yA = R_A(:, 2); yS = [R_dep(:, 2); R_GA(:, 2); R_rv(:, 2);];
+% zM = R_M(:, 3); zE = R_E(:, 3); zA = R_A(:, 3); zS = [R_dep(:, 3); R_GA(:, 3); R_rv(:, 3);];
+% 
+% % Initialise the plot
+% figure("Name", "Animated Orbit Plot"); hold on; grid on; view(3); axis equal;
+% maxx = max([max(abs(xM)), max(abs(xE)), max(abs(xA)), max(abs(xS))]);
+% maxy = max([max(abs(yM)), max(abs(yE)), max(abs(yA)), max(abs(yS))]);
+% maxz = max([max(abs(zM)), max(abs(zE)), max(abs(zA)), max(abs(zS))]);
+% xlim([-maxx, maxx]); ylim([-maxy, maxy]); zlim([-maxz, maxz])
+% 
+% scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
+% 
+% % Create animated lines
+% hM = animatedline("Color", "r", "MaximumNumPoints", inf);
+% hE = animatedline("Color", "g", "MaximumNumPoints", inf);
+% hA = animatedline("Color", "b", "MaximumNumPoints", inf);
+% hS = animatedline("color", "y", "MaximumNumPoints", inf);
+% 
+% % Add markers for the "heads" of the comets
+% headM = plot3(xM(1), yM(1), zM(1), "ro", "MarkerFaceColor", "r");
+% headE = plot3(xE(1), yE(1), zE(1), "go", "MarkerFaceColor", "g");
+% headA = plot3(xA(1), yA(1), zA(1), "bo", "MarkerFaceColor", "b");
+% headS = plot3(xS(1), yS(1), zS(1), "yo", "MarkerFaceColor", "y");
+% 
+% % --- plot properties ---
+% title("Simultaneous Multi-Orbit Animation");
+% xlabel("X [AU]"); ylabel("Y [AU]"); zlabel("Z [AU]");
+% legend( ...
+%     "Sun Position", ...
+%     "Mercury Orbit", ...
+%     "Earth Orbit", ...
+%     "Asteroid Orbit", ...
+%     "Spacecraft Trajectory" ...
+%     );
+% 
+% % Animation loop
+% for i = 1:length(t_full)
+%     % Update the tails
+%     if i == 1
+%         pause(2)
+%     end
+%     addpoints(hM, xM(i), yM(i), zM(i));
+%     addpoints(hE, xE(i), yE(i), zE(i));
+%     addpoints(hA, xA(i), yA(i), zA(i));
+%     addpoints(hS, xS(i), yS(i), zS(i));
+% 
+%     % Update the heads
+%     set(headM, "XData", xM(i), "YData", yM(i), "ZData", zM(i));
+%     set(headE, "XData", xE(i), "YData", yE(i), "ZData", zE(i));
+%     set(headA, "XData", xA(i), "YData", yA(i), "ZData", zA(i));
+%     set(headS, "XData", xS(i), "YData", yS(i), "ZData", zS(i));
+% 
+%     drawnow limitrate; pause(0.03); 
+% end
