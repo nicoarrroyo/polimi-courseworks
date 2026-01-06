@@ -4,8 +4,8 @@ proj_d = cd(1:backs(end)); addpath([proj_d '\lib']);
 addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
 
 %% 1. Constants
-steps = 40;
-dv_lim = Inf; % for a single manouvre [km s^-1] (try to set as low as possible)
+steps = 200;
+dv_lim = 100; % for a single manouvre [km s^-1] (try to set as low as possible)
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -22,7 +22,7 @@ asteroid_name = "N." + asteroid_id;
 
 %% 2. Initialise Arrays
 % --- Time ---
-travel_window_start_date = [2035, 1, 1, 0, 0, 0];
+travel_window_start_date = [2030, 1, 1, 0, 0, 0];
 travel_window_close_date = [2040, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
@@ -66,8 +66,7 @@ dv_grid1 = Inf(steps, steps, 3);
 dv_grid1_norm = Inf(steps, steps);
 
 % Manouvre 2: Earth-Asteroid Gravity Assist
-dv_grid2 = Inf(steps, steps, 3);
-dv_grid2_norm = Inf(steps, steps);
+% variables defined when needed. no need for arrays
 
 % Manouvre 3: Asteroid Rendez-Vous
 dv_grid3 = Inf(steps, steps, 3);
@@ -130,11 +129,11 @@ disp("found " + length(dv_grid1_valid_rows)*length(dv_grid1_valid_cols) + " vali
 toc
 
 % --- Analyse grid search the Mercury-Earth Leg ---
-% porkchop_plot( ...
-%     "Mercury-Earth", ...
-%     dv_grid1_norm, ...
-%     time_list, ...
-%     time_list);
+porkchop_plot( ...
+    "Mercury-Earth", ...
+    dv_grid1_norm, ...
+    time_list, ...
+    time_list);
 
 %% Manouvre 3: Lambert Arc from Earth (includes asteroid rendez-vous)
 % manouvre 3 done before manouvre 2 because of problem geometry.
@@ -191,18 +190,18 @@ disp("found " + length(dv_grid3_valid_rows)*length(dv_grid3_valid_cols) + " vali
 toc
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
-% porkchop_plot( ...
-%     "Earth-Asteroid", ...
-%     dv_grid3_norm, ...
-%     time_list, ...
-%     time_list);
+porkchop_plot( ...
+    "Earth-Asteroid", ...
+    dv_grid3_norm, ...
+    time_list, ...
+    time_list);
 
 %% Manouvre 2: Gravity Assist at Earth
 fprintf("\nconducting grid search 3 (flyby)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
 
-opt_dvtot = Inf;
+opt_dv_tot = Inf;
 for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     jj = possible_flyby_idxs(j);
     V_planet = VE_list(jj, :);
@@ -210,7 +209,7 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     for i = 1:length(valid_depart) % for each valid mercury departure
         ii = valid_depart(i);
         V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
-        this_lowest_dv_tot = Inf;
+        this_opt_dv_tot = Inf;
 
         dv_launch_norm = dv_grid1_norm(ii, jj);
 
@@ -225,7 +224,7 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
             end
 
             dv_tot_norm = dv_launch_norm + dv_fb_norm + dv_grid3_norm(jj, kk);
-            if dv_tot_norm > this_lowest_dv_tot
+            if dv_tot_norm > this_opt_dv_tot
                 continue
             end
 
@@ -248,12 +247,17 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
                 continue
             end
 
-            if dv_tot_norm < opt_dvtot
-                opt_dv_launch = dv_grid1(ii, jj, :);
+            if dv_tot_norm < norm(opt_dv_tot)
+                opt_dv_launch = reshape(dv_grid1(ii, jj, :), 1, 3);
                 opt_dv_fb = dv_fb;
-                opt_dv_rv = dv_grid3(jj, kk, :);
+                opt_dv_rv = reshape(dv_grid3(jj, kk, :), 1, 3);
 
-                opt_dvtot = dv_launch + dv_fb + dv_rv;
+                opt_dv_launch_norm = norm(opt_dv_launch);
+                opt_dv_fb_norm = dv_fb_norm;
+                opt_dv_rv_norm = norm(opt_dv_rv);
+
+                opt_dv_tot = opt_dv_launch + opt_dv_fb + opt_dv_rv;
+                opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_fb_norm + opt_dv_rv_norm;
             end
 
             % eq = @(rp) delta - ...
@@ -269,86 +273,37 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
     end
 end
 
-[dv_grid2_valid_rows, dv_grid2_valid_cols] = find(~isnan(dv_grid2_norm));
-dv_grid2_valid_rows = unique(dv_grid2_valid_rows, "stable");
-dv_grid2_valid_cols = unique(dv_grid2_valid_cols, "stable");
 disp("complete!");
-disp("found " + length(dv_grid2_valid_rows)*length(dv_grid2_valid_cols) + " valid options out of " + (length(dv_grid3_valid_rows)*steps));
 toc
 
 %% 3. Stitching
-[dv1_vals, dv1_locs] = min(dv_grid1_norm(:, possible_flyby_idxs), [], 1, "omitnan");
-[dv3_vals, dv3_locs] = min(dv_grid3_norm(possible_flyby_idxs, :), [], 2, "omitnan");
-[dv2_vals, dv2_locs] = min(dv_grid2_norm(possible_flyby_idxs, :), [], 2, "omitnan");
-% [dv1_vals, dv1_idxs] = min(dv_grid1_norm);
-% [dv2_vals, dv2_idxs] = min(dv_grid2_norm);
-% [dv3_vals, dv3_idxs] = min(dv_grid3_norm);
-
-total_dv_vals = dv1_vals(:)' + dv2_vals(:)' + dv3_vals(:)'; % force row vectors for element-wise addition
-[opt_dvtot, best_idx] = min(total_dv_vals, [], "omitnan");
-
-% dv_gridtot_norm = dv_grid1_norm + dv_grid2_norm + dv_grid3_norm;
-% dv_min_val = min(dv_gridtot_norm(:));
-% [dv_min_row, dv_min_col] = find(dv_gridtot_norm == dv_min_val);
-
-[optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm); % The row in Grid 1
-optimal_E_idx = possible_flyby_idxs(best_idx); % The specific time index
-optimal_A_idx = dv3_locs(best_idx); % The col in Grid 2
-
-%% 3. Stitching
-% lowest_dvtot_an = 1000;
-% 
-% for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
-%     jj = possible_flyby_idxs(j);
-%     V_planet = VE_list(jj, :);
-%     valid_depart = find(~isnan(V2_grid(:, jj)));
-% 
-%     for i = 1:length(valid_depart) % for each valid mercury departure
-%         ii = valid_depart(i);
-%         V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
-%         this_lowest_dv_tot = 1000;
-% 
-%         for k = 1:length(dv_grid3_valid_cols) % for each valid asteroid arrival
-%             kk = dv_grid3_valid_cols(k);
-%             V_plus = reshape(V3_grid(jj, kk, :), 1, 3);
-% 
-%             dv_fb = V_plus - V_minus;
-%             dv_fb_norm = norm(dv_fb);
-%             if dv_fb_norm > dv_lim
-%                 continue
-%             end
-% 
-%             dv_tot = dv_fb_norm + dv_grid1_norm(ii, jj) + dv_grid3_norm(jj, kk);
-%             if dv_tot > this_lowest_dv_tot
-%                 continue
-%             end
-%             if dv_tot < lowest_dvtot_an
-%                 lowest_dvtot_an = dv_tot;
-%                 optimal_M_idx_an = ii; optimal_E_idx_an = jj; optimal_A_idx_an = kk;
-%             end
-%         end
-%     end
-% end
+[optimal_M_idx, optimal_E_idx1] = find(dv_grid1_norm == opt_dv_launch_norm);
+[optimal_E_idx2, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
+if optimal_E_idx1 ~= optimal_E_idx2
+    disp("alert: something has gone wrong")
+else
+    optimal_E_idx = optimal_E_idx1;
+    clear optimal_E_idx1 optimal_E_idx2
+end
 
 %% Final Results Output
-fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dvtot);
-fprintf("LEG 1 ΔV: %.4f km s^-1\n", dv_grid1_norm(optimal_M_idx_an, optimal_E_idx_an));
-fprintf("LEG 2 ΔV: %.4f km s^-1\n", dv_grid2_norm(optimal_E_idx_an, optimal_A_idx_an));
-fprintf("LEG 3 ΔV: %.4f km s^-1\n", dv_grid3_norm(optimal_E_idx_an, optimal_A_idx_an));
+fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
+fprintf("LEG 1 ΔV: %.4f km s^-1\n", opt_dv_launch_norm);
+fprintf("LEG 2 ΔV: %.4f km s^-1\n", opt_dv_fb_norm);
+fprintf("LEG 3 ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
 
 fprintf("\nOPTIMAL DATES\n")
-fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx_an));
-fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx_an)));
+fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
+fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
 
-fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx_an));
-fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx_an)));
+fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
+fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
 
-fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx_an));
-fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx_an)));
+fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
+fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
 
 %% Plot the transfer trajectory for this mission
 % --- set up times and options ---
-optimal_M_idx = optimal_M_idx_an; optimal_E_idx = optimal_E_idx_an; optimal_A_idx = optimal_A_idx_an;
 mjd2k1 = time_list(optimal_M_idx);
 mjd2k2 = time_list(optimal_E_idx);
 mjd2k3 = time_list(optimal_A_idx);
