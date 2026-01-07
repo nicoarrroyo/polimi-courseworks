@@ -3,7 +3,8 @@ clear; close all; clc;
 %% 1. Constants
 steps = 500;
 dv_lim = 30; % km s^-1
-tof_lim = 80; % days
+tof_lim_leg1 = 80; % days
+tof_lim_leg2 = 300;
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -21,7 +22,7 @@ asteroid_name = "N." + asteroid_id;
 %% 2. Initialise Arrays
 % --- Time ---
 travel_window_start_date = [2030, 1, 1, 0, 0, 0];
-travel_window_close_date = [2060, 1, 1, 0, 0, 0];
+travel_window_close_date = [2033, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -87,7 +88,7 @@ for i = 1:steps
         tof = t2 - t1;
 
         % check for arrival being after departure
-        if tof <= (tof_lim*24*3600) % minimum time for tof
+        if tof <= (tof_lim_leg1*24*3600) % minimum time for tof
             continue
         end
 
@@ -148,7 +149,7 @@ for i = 1:length(dv_grid1_valid_cols)
         tof = t2 - t1;
 
         % check for arrival being after departure
-        if tof <= (tof_lim*24*3600) % minimum time for tof
+        if tof <= (tof_lim_leg2*24*3600) % minimum time for tof
             continue
         end
 
@@ -326,9 +327,9 @@ opt_dv_fb_norm = norm(opt_dv_fb);
 opt_dv_rv_norm = norm(opt_dv_rv);
 
 opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
-opt_delta_minus = asin(1/opt_e_minus);
+opt_semi_delta_minus = asin(1/opt_e_minus);
 opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
-opt_delta_plus = asin(1/opt_e_plus);
+opt_semi_delta_plus = asin(1/opt_e_plus);
 
 opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
 opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
@@ -340,8 +341,8 @@ opt_dv_p = opt_v_p_plus - opt_v_p_minus;
 
 opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
 
-disp("optimal incoming turn angle [deg]: " + rad2deg(opt_delta_minus))
-disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_delta_plus))
+disp("optimal incoming turn angle [deg]: " + rad2deg(opt_semi_delta_minus))
+disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_semi_delta_plus))
 disp("optimal total turn angle [deg]: " + rad2deg(opt_delta))
 disp("optimal perigee passage height [km]: " + opt_rp)
 
