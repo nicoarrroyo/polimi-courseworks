@@ -397,20 +397,20 @@ fprintf("ASTEROID ARR DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(ti
 
 % Interplanetary arcs characterisations
 fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 1 (MERCURY-EARTH) ---\n")
-fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a1);
-fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e1);
-fprintf("INCLINATION          [deg]  i: %.4f\n", rad2deg(opt_i1));
-fprintf("RIGHT ASCENSION      [deg] Om: %.4f\n", rad2deg(opt_Om1));
-fprintf("ARGUMENT OF PERIGEE  [deg] om: %.4f\n", rad2deg(opt_om1));
-fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA1));
+fprintf("SEMI MAJOR AXIS         [km]  a: %.4f\n", opt_a1);
+fprintf("ECCENTRICITY             [-]  e: %.4f\n", opt_e1);
+fprintf("INCLINATION            [deg]  i: %.4f\n", rad2deg(opt_i1));
+fprintf("RIGHT ASCENSION        [deg] Om: %.4f\n", rad2deg(opt_Om1));
+fprintf("ARGUMENT OF PERIHELION [deg] om: %.4f\n", rad2deg(opt_om1));
+fprintf("TRUE ANOMALY (@ dep)   [deg] TA: %.4f\n", rad2deg(opt_TA1));
 
 fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 2 (EARTH-ASTEROID) ---\n")
-fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a2);
-fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e2);
-fprintf("INCLINATION          [deg]  i: %.4f\n", rad2deg(opt_i2));
-fprintf("RIGHT ASCENSION      [deg] Om: %.4f\n", rad2deg(opt_Om2));
-fprintf("ARGUMENT OF PERIGEE  [deg] om: %.4f\n", rad2deg(opt_om2));
-fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA2));
+fprintf("SEMI MAJOR AXIS          [km]  a: %.4f\n", opt_a2);
+fprintf("ECCENTRICITY              [-]  e: %.4f\n", opt_e2);
+fprintf("INCLINATION             [deg]  i: %.4f\n", rad2deg(opt_i2));
+fprintf("RIGHT ASCENSION         [deg] Om: %.4f\n", rad2deg(opt_Om2));
+fprintf("ARGUMENT OF PERIHELION  [deg] om: %.4f\n", rad2deg(opt_om2));
+fprintf("TRUE ANOMALY (@ dep)    [deg] TA: %.4f\n", rad2deg(opt_TA2));
 
 % Heliocentric trajectory plot
 % see plot section below
@@ -442,7 +442,7 @@ t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
 t3 = mjd2k3 * 24 * 3600;
 t4 = t3 + (120*24*3600);
-t_full = linspace(t1, t4, 500);
+t_full = linspace(t1, t4, steps);
 
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
