@@ -316,24 +316,11 @@ for j = 1:length(possible_flyby_idxs)
 end
 disp("complete!"); toc
 
-%% Final Results Output
-% --- Heliocentric trajectory --- %
+%% Final Results Calculations
 [optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
 [~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
 
-% Departure, flyby, and arrival times
-fprintf("\n=== HELIOCENTRIC TRAJECTORY ===\n");
-fprintf("--- OPTIMAL DATES ---\n")
-fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
-fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
-
-fprintf("\nEARTH FLY-BY MJD2000  %.3f\n", time_list(optimal_E_idx));
-fprintf("EARTH FLY-BY DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
-
-fprintf("\nASTEROID ARR MJD2000  %.3f\n", time_list(optimal_A_idx));
-fprintf("ASTEROID ARR DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
-
-% Interplanetary arcs characterisations
+% Characterise interplanetary legs
 [...
     opt_a1, ...
     opt_e1, ...
@@ -356,6 +343,59 @@ fprintf("ASTEROID ARR DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(ti
     reshape(V3_grid(optimal_E_idx, optimal_A_idx, :), [], 3), ...
     mu_sun);
 
+% Calculate lowest pericentre passage
+eq = @(rp) opt_delta - ...
+    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
+    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
+opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
+
+% Calculate fly-by duration
+R_soi = AU * (planet_E_mu / mu_sun)^(2/5); % Radius of Sphere of Influence [km]
+opt_a_hyp = -planet_E_mu / opt_v_inf_minus_norm^2; % Hyperbolic semi-major axis [km]
+opt_e_hyp = 1 + (rp_crit * opt_v_inf_minus_norm^2) / planet_E_mu; % Hyperbolic eccentricity [-]
+H_soi = acosh((1 - R_soi/opt_a_hyp) / opt_e_hyp); % Hyperbolic anomaly at SOI boundary [rad]
+M_soi = opt_e_hyp * sinh(H_soi) - H_soi; % Mean anomaly at SOI boundary [rad]
+n = sqrt(planet_E_mu / abs(opt_a_hyp)^3); % Mean motion [km/s]
+opt_tof_fb = 2 * M_soi / n; % total, in seconds
+opt_tof_fb_hours = floor(opt_tof_fb / 3600); % just the hours
+opt_tof_fb_minutes = floor(mod(opt_tof_fb, 3600) / 60); % just the minutes
+opt_tof_fb_seconds = mod(opt_tof_fb, 60); % just the seconds
+opt_tof_fb_hms = [opt_tof_fb_hours opt_tof_fb_minutes opt_tof_fb_seconds];
+
+% Calculate turn angles
+opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
+opt_semi_delta_minus = asin(1/opt_e_minus);
+opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
+opt_semi_delta_plus = asin(1/opt_e_plus);
+
+% Calculate pericentre velocities
+opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
+opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
+opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
+opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
+
+% Calculate all optimal delta-vs
+opt_dv_launch_norm = norm(opt_dv_launch);
+opt_dv_fb_norm = norm(opt_dv_fb);
+opt_dv_rv_norm = norm(opt_dv_rv);
+opt_dv_p = opt_v_p_plus - opt_v_p_minus;
+opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
+
+%% Final Results Output
+% --- Heliocentric trajectory --- %
+% Departure, flyby, and arrival times
+fprintf("\n=== HELIOCENTRIC TRAJECTORY ===\n");
+fprintf("--- OPTIMAL DATES ---\n")
+fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
+fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
+
+fprintf("\nEARTH FLY-BY MJD2000  %.3f\n", time_list(optimal_E_idx));
+fprintf("EARTH FLY-BY DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
+
+fprintf("\nASTEROID ARR MJD2000  %.3f\n", time_list(optimal_A_idx));
+fprintf("ASTEROID ARR DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
+
+% Interplanetary arcs characterisations
 fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 1 (MERCURY-EARTH) ---\n")
 fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a1);
 fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e1);
@@ -364,7 +404,7 @@ fprintf("RIGHT ASCENSION      [deg] Om: %.4f\n", rad2deg(opt_Om1));
 fprintf("ARGUMENT OF PERIGEE  [deg] om: %.4f\n", rad2deg(opt_om1));
 fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA1));
 
-fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 2 (MERCURY-EARTH) ---\n")
+fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 2 (EARTH-ASTEROID) ---\n")
 fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a2);
 fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e2);
 fprintf("INCLINATION          [deg]  i: %.4f\n", rad2deg(opt_i2));
@@ -375,40 +415,19 @@ fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA2));
 % Heliocentric trajectory plot
 % see plot section below
 
-% --- Powered gravity assist ---
-eq = @(rp) opt_delta - ...
-    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
-    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
-opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
-
-opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
-opt_semi_delta_minus = asin(1/opt_e_minus);
-opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
-opt_semi_delta_plus = asin(1/opt_e_plus);
-
-opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
-opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
-opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
-opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
-
-opt_dv_launch_norm = norm(opt_dv_launch);
-opt_dv_fb_norm = norm(opt_dv_fb);
-opt_dv_rv_norm = norm(opt_dv_rv);
-opt_dv_p = opt_v_p_plus - opt_v_p_minus;
-opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
-% opt_tof_fb = HOW DO I DO THIS???
-
+% --- Powered gravity assist --- %
 fprintf("\n=== POWERED GRAVITY ASSIST ===\n")
 fprintf("ALT OF CLOSEST APPROACH [km]: %.4f\n", opt_rp-planet_E_r);
-%fprintf("TIME DURATION OF FLYBY   [s]: %.4f\n", opt_tof_fb);
+fprintf("TIME DURATION OF FLYBY      : %.0fh %.0fm %.0fs\n", opt_tof_fb_hms);
 fprintf("DELTA-V FROM FLYBY    [km/s]: %.4f\n", opt_dv_fb_norm);
 fprintf("DELTA-V FROM MANOUVRE [km/s]: %.4f\n", opt_dv_p);
-fprintf("INCOMING HYPERBOLA δ/2 [deg] %.4f\n", rad2deg(opt_semi_delta_minus))
-fprintf("OUTGOING HYPERBOLA δ/2 [deg] %.4f\n", rad2deg(opt_semi_delta_plus))
-fprintf("TOTAL TURN ANGLE δ [deg] %.4f\n", rad2deg(opt_delta))
+fprintf("INCOMING HYPERBOLA δ/2 [deg]: %.4f\n", rad2deg(opt_semi_delta_minus))
+fprintf("OUTGOING HYPERBOLA δ/2 [deg]: %.4f\n", rad2deg(opt_semi_delta_plus))
+fprintf("TOTAL TURN ANGLE δ     [deg]: %.4f\n", rad2deg(opt_delta))
 
-% --- Cost of the mission ---
-fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
+% --- Cost of the mission --- %
+fprintf("\n=== COST OF MISSION ===\n")
+fprintf("TOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
 fprintf("MERCURY LAUNCH ΔV      : %.4f km s^-1\n", opt_dv_launch_norm);
 fprintf("FLY-BY ΔV @ PERICENTRE : %.4f km s^-1\n", opt_dv_p);
 fprintf("ASTEROID RENDEZ-VOUS ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
