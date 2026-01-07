@@ -1,8 +1,9 @@
 clear; close all; clc;
 
 %% 1. Constants
-steps = 1000;
-dv_lim = 30;
+steps = 500;
+dv_lim = 30; % km s^-1
+tof_lim = 80; % days
 
 mu_sun = astroConstants(4); % Sun Gravitational Parameter [km^3 s^-2]
 AU = astroConstants(2); % Astronomical Unit [km]
@@ -86,7 +87,7 @@ for i = 1:steps
         tof = t2 - t1;
 
         % check for arrival being after departure
-        if tof <= (10*24*3600) % minimum time for tof
+        if tof <= (tof_lim*24*3600) % minimum time for tof
             continue
         end
 
@@ -118,7 +119,7 @@ dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
 
 % --- Find valid options ---
 % rows = mercury departure, columns = earth arrival
-[dv_grid1_valid_rows, dv_grid1_valid_cols] = find(~isnan(dv_grid1_norm));
+[dv_grid1_valid_rows, dv_grid1_valid_cols] = find(~isinf(dv_grid1_norm));
 dv_grid1_valid_rows = unique(dv_grid1_valid_rows, "stable");
 dv_grid1_valid_cols = unique(dv_grid1_valid_cols, "stable");
 disp("complete!");
@@ -147,7 +148,7 @@ for i = 1:length(dv_grid1_valid_cols)
         tof = t2 - t1;
 
         % check for arrival being after departure
-        if tof <= (10*24*3600) % minimum time for tof
+        if tof <= (tof_lim*24*3600) % minimum time for tof
             continue
         end
 
@@ -179,7 +180,7 @@ dv_grid3_norm = vecnorm(dv_grid3, 2, 3);
 
 % --- Find valid options ---
 % rows = earth departure, columns = asteroid arrival
-[dv_grid3_valid_rows, dv_grid3_valid_cols] = find(~isnan(dv_grid3_norm));
+[dv_grid3_valid_rows, dv_grid3_valid_cols] = find(~isinf(dv_grid3_norm));
 dv_grid3_valid_rows = unique(dv_grid3_valid_rows, "stable");
 dv_grid3_valid_cols = unique(dv_grid3_valid_cols, "stable");
 disp("complete!");
@@ -195,112 +196,6 @@ porkchop_plot( ...
 
 %% Manouvre 2: Gravity Assist at Earth
 fprintf("\nconducting grid search 3 (flyby)... "); tic
-possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
-rp_crit = planet_E_r + 500;
-
-opt_dv_tot = Inf;
-for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
-    jj = possible_flyby_idxs(j);
-    V_planet = VE_list(jj, :);
-    valid_depart = find(~isnan(V2_grid(:, jj)));
-    for i = 1:length(valid_depart) % for each valid mercury departure
-        ii = valid_depart(i);
-        V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
-
-        v_inf_minus = V_minus - V_planet;
-        v_inf_minus_norm = norm(v_inf_minus);
-        e_minus_crit = 1 + rp_crit*v_inf_minus_norm^2/planet_E_mu;
-        delta_minus_crit = 2*asin(1/e_minus_crit);
-
-        this_opt_dv_tot = Inf;
-        dv_launch_norm = dv_grid1_norm(ii, jj);
-
-        for k = 1:length(dv_grid3_valid_cols) % for each valid asteroid arrival
-            kk = dv_grid3_valid_cols(k);
-            V_plus = reshape(V3_grid(jj, kk, :), 1, 3);
-
-            dv_fb = V_plus - V_minus;
-            dv_fb_norm = norm(dv_fb);
-            if dv_fb_norm > dv_lim
-                continue
-            end
-
-            dv_tot_norm = dv_launch_norm + dv_fb_norm + dv_grid3_norm(jj, kk);
-            if dv_tot_norm > this_opt_dv_tot
-                continue
-            end
-
-            v_inf_plus = V_plus - V_planet;
-            v_inf_plus_norm = norm(v_inf_plus);
-
-            dot_prod = dot(v_inf_minus, v_inf_plus);
-            delta = acos(dot_prod / (v_inf_minus_norm * v_inf_plus_norm));
-
-            e_plus_crit = 1 + rp_crit*v_inf_plus_norm^2/planet_E_mu;
-            delta_plus_crit = 2*asin(1/e_plus_crit);
-            delta_crit = (delta_minus_crit+delta_plus_crit)/2;
-
-            if delta > delta_crit || isnan(delta)
-                continue
-            end
-
-            if dv_tot_norm < norm(opt_dv_tot)
-                opt_dv_launch = reshape(dv_grid1(ii, jj, :), 1, 3);
-                opt_dv_fb = dv_fb;
-                opt_dv_rv = reshape(dv_grid3(jj, kk, :), 1, 3);
-
-                opt_dv_launch_norm = norm(opt_dv_launch);
-                opt_dv_fb_norm = dv_fb_norm;
-                opt_dv_rv_norm = norm(opt_dv_rv);
-
-                opt_dv_tot = opt_dv_launch + opt_dv_fb + opt_dv_rv;
-                opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_fb_norm + opt_dv_rv_norm;
-
-                opt_delta = delta;
-                opt_v_inf_plus_norm = v_inf_plus_norm;
-                opt_v_inf_minus_norm = v_inf_minus_norm;
-            end
-        end
-    end
-end
-
-eq = @(rp) opt_delta - ...
-    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
-    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
-rp_ans = fzero(eq, rp_crit, optimset("Display", "off"));
-disp("complete!"); toc
-
-opt_e_minus = 1 + rp_ans*opt_v_inf_minus_norm^2/planet_E_mu;
-opt_delta_minus = asin(1/opt_e_minus);
-opt_e_plus = 1 + rp_ans*opt_v_inf_plus_norm^2/planet_E_mu;
-opt_delta_plus = asin(1/opt_e_plus);
-
-disp("optimal incoming turn angle [deg]: " + rad2deg(opt_delta_minus))
-disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_delta_plus))
-disp("optimal total turn angle [deg]: " + rad2deg(opt_delta))
-disp("optimal perigee passage height [km]: " + rp_ans)
-
-%% Final Results Output
-[optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
-[~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
-
-fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
-fprintf("LEG 1 ΔV: %.4f km s^-1\n", opt_dv_launch_norm);
-fprintf("LEG 2 ΔV: %.4f km s^-1\n", opt_dv_fb_norm);
-fprintf("LEG 3 ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
-
-fprintf("\nOPTIMAL DATES\n")
-fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
-fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
-
-fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
-fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
-
-fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
-fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
-
-%% Manouvre 2: Gravity Assist at Earth (Vectorized)
-fprintf("\nconducting grid search 3 (flyby - optimized)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
 
@@ -333,8 +228,8 @@ for j = 1:length(possible_flyby_idxs)
     opt_dv_rv_matrix = reshape(dv_grid3(jj, valid_k_indices, :), [], 3);
     
     % Pre-calculate V_inf_plus properties for the whole batch
-    V_inf_plus_matrix = V_plus_matrix - V_planet;
-    v_inf_plus_norms = vecnorm(V_inf_plus_matrix, 2, 2);
+    v_inf_plus_matrix = V_plus_matrix - V_planet;
+    v_inf_plus_norms = vecnorm(v_inf_plus_matrix, 2, 2);
     
     % Calculate critical deflection angles for outgoing leg (Vectorized)
     e_plus_crit = 1 + rp_crit .* (v_inf_plus_norms.^2) ./ planet_E_mu;
@@ -383,7 +278,7 @@ for j = 1:length(possible_flyby_idxs)
         
         % Vectorized Angle Checks for candidates
         % Dot product: sum(A .* B, 2) is row-wise dot product
-        dot_prods = sum(repmat(v_inf_minus, length(cand_idx), 1) .* V_inf_plus_matrix(cand_idx, :), 2);
+        dot_prods = sum(repmat(v_inf_minus, length(cand_idx), 1) .* v_inf_plus_matrix(cand_idx, :), 2);
         
         deltas = acos(dot_prods ./ (v_inf_minus_norm .* v_inf_plus_norms(cand_idx)));
         
@@ -469,7 +364,7 @@ t1 = mjd2k1 * 24 * 3600;
 t2 = mjd2k2 * 24 * 3600;
 t3 = mjd2k3 * 24 * 3600;
 t4 = t3 + (120*24*3600);
-t_full = linspace(t1, t4, 100);
+t_full = linspace(t1, t4, 500);
 
 options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
 
