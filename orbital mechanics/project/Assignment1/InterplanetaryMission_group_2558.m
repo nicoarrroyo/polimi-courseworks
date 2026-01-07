@@ -1,8 +1,3 @@
-%% configure paths
-cd = fileparts(mfilename("fullpath")); backs = strfind(cd, "\"); 
-proj_d = cd(1:backs(end)); addpath([proj_d '\lib']); 
-addpath([proj_d '\lib' '\timeConversion']); clear; close all; clc;
-
 %% 1. Constants
 steps = 200;
 dv_lim = 30;
@@ -239,7 +234,7 @@ for j = 1:length(possible_flyby_idxs) % for each valid "being at earth"
             dot_prod = dot(v_inf_minus, v_inf_plus);
             delta = acos(dot_prod / (v_inf_minus_norm * v_inf_plus_norm));
 
-            e_plus_crit = 1 + rp_crit*v_inf_minus_norm^2/planet_E_mu;
+            e_plus_crit = 1 + rp_crit*v_inf_plus_norm^2/planet_E_mu;
             delta_plus_crit = 2*asin(1/e_plus_crit);
             delta_crit = (delta_minus_crit+delta_plus_crit)/2;
 
@@ -271,9 +266,131 @@ eq = @(rp) opt_delta - ...
     asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
     asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
 rp_ans = fzero(eq, rp_crit, optimset("Display", "off"));
+disp("complete!"); toc
 
-disp("complete!");
-toc
+opt_e_minus = 1 + rp_ans*opt_v_inf_minus_norm^2/planet_E_mu;
+opt_delta_minus = asin(1/opt_e_minus);
+opt_e_plus = 1 + rp_ans*opt_v_inf_plus_norm^2/planet_E_mu;
+opt_delta_plus = asin(1/opt_e_plus);
+
+disp("optimal incoming turn angle [deg]: " + rad2deg(opt_delta_minus))
+disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_delta_plus))
+disp("optimal total turn angle [deg]: " + rad2deg(opt_delta))
+disp("optimal perigee passage height [km]: " + rp_ans)
+
+%% Final Results Output
+[optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
+[~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
+
+fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
+fprintf("LEG 1 ΔV: %.4f km s^-1\n", opt_dv_launch_norm);
+fprintf("LEG 2 ΔV: %.4f km s^-1\n", opt_dv_fb_norm);
+fprintf("LEG 3 ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
+
+fprintf("\nOPTIMAL DATES\n")
+fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
+fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
+
+fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
+fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
+
+fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
+fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
+
+%% Manouvre 2: Gravity Assist at Earth (Vectorized)
+fprintf("\nconducting grid search 3 (flyby)... "); tic
+possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
+rp_crit = planet_E_r + 500;
+
+opt_dv_tot_norm = Inf;
+
+for j = 1:length(possible_flyby_idxs)
+    jj = possible_flyby_idxs(j);
+    V_planet = VE_list(jj, :);
+    valid_depart = find(~isnan(V2_grid(:, jj, 1)));
+    
+    for i = 1:length(valid_depart)
+        ii = valid_depart(i);
+        V_minus = reshape(V2_grid(ii, jj, :), 1, 3);
+        
+        v_inf_minus = V_minus - V_planet;
+        v_inf_minus_norm = norm(v_inf_minus);
+        e_minus_crit = 1 + rp_crit*v_inf_minus_norm^2/planet_E_mu;
+        delta_minus_crit = 2*asin(1/e_minus_crit);
+        
+        dv_launch_norm = dv_grid1_norm(ii, jj);
+        
+        % Vectorize over all valid asteroid arrivals
+        kk_list = dv_grid3_valid_cols;
+        V_plus_all = reshape(V3_grid(jj, kk_list, :), length(kk_list), 3);
+        
+        % Filter out NaN entries
+        valid_mask = ~isnan(V_plus_all(:,1));
+        kk_list = kk_list(valid_mask);
+        V_plus_all = V_plus_all(valid_mask, :);
+
+        if isempty(kk_list)
+            continue
+        end
+
+        dv_fb_all = V_plus_all - V_minus;
+        dv_fb_norm_all = vecnorm(dv_fb_all, 2, 2);
+
+        valid_dv = dv_fb_norm_all <= dv_lim;
+        kk_list = kk_list(valid_dv);
+        dv_fb_all = dv_fb_all(valid_dv, :);
+        dv_fb_norm_all = dv_fb_norm_all(valid_dv);
+        V_plus_all = V_plus_all(valid_dv, :);
+
+        if isempty(kk_list)
+            continue
+        end
+
+        dv_rv_norm_all = dv_grid3_norm(jj, kk_list);
+        dv_tot_norm_all = dv_launch_norm + dv_fb_norm_all' + dv_rv_norm_all;
+
+        v_inf_plus_all = V_plus_all - V_planet;
+        v_inf_plus_norm_all = vecnorm(v_inf_plus_all, 2, 2);
+
+        %dot_prod_all = dot(v_inf_minus, v_inf_plus_all);
+        dot_prod_all = sum(v_inf_minus .* v_inf_plus_all, 2);
+        delta_all = acos(dot_prod_all ./ (v_inf_minus_norm * v_inf_plus_norm_all));
+        
+        e_plus_crit_all = 1 + rp_crit * v_inf_plus_norm_all.^2 / planet_E_mu;
+        delta_plus_crit_all = 2*asin(1./e_plus_crit_all);
+        delta_crit_all = (delta_minus_crit + delta_plus_crit_all) / 2;
+        
+        % Find valid and optimal solution
+        valid_delta_all = delta_all <= delta_crit_all & ~isnan(delta_all);
+        
+        if ~any(valid_delta_all)
+            continue
+        end
+        
+        [min_dv, min_idx] = min(dv_tot_norm_all(valid_delta_all));
+        
+        if min_dv < opt_dv_tot_norm
+            valid_idxs = find(valid_delta_all);
+            best_idx = valid_idxs(min_idx);
+            kk = kk_list(best_idx);
+            
+            opt_dv_launch = reshape(dv_grid1(ii, jj, :), 1, 3);
+            opt_dv_fb = dv_fb_all(best_idx, :);
+            opt_dv_rv = reshape(dv_grid3(jj, kk, :), 1, 3);
+            
+            opt_dv_launch_norm = norm(opt_dv_launch);
+            opt_dv_fb_norm = dv_fb_norm_all(best_idx);
+            opt_dv_rv_norm = norm(opt_dv_rv);
+            
+            opt_dv_tot = opt_dv_launch + opt_dv_fb + opt_dv_rv;
+            opt_dv_tot_norm = min_dv;
+            
+            opt_delta = delta_all(best_idx);
+            opt_v_inf_plus = v_inf_plus_all(best_idx);
+            opt_v_inf_minus = v_inf_minus;
+        end
+    end
+end
 
 %% Final Results Output
 [optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
