@@ -22,7 +22,7 @@ asteroid_name = "N." + asteroid_id;
 %% 2. Initialise Arrays
 % --- Time ---
 travel_window_start_date = [2030, 1, 1, 0, 0, 0];
-travel_window_close_date = [2033, 1, 1, 0, 0, 0];
+travel_window_close_date = [2060, 1, 1, 0, 0, 0];
 travel_window_start_mjd2k = date2mjd2000(travel_window_start_date);
 travel_window_close_mjd2k = date2mjd2000(travel_window_close_date);
 
@@ -124,7 +124,7 @@ dv_grid1_norm = vecnorm(dv_grid1, 2, 3);
 dv_grid1_valid_rows = unique(dv_grid1_valid_rows, "stable");
 dv_grid1_valid_cols = unique(dv_grid1_valid_cols, "stable");
 disp("complete!");
-disp("found " + length(dv_grid1_valid_rows)*length(dv_grid1_valid_cols) + " valid options out of " + (steps*steps));
+disp("found " + length(dv_grid1_valid_cols) + " valid options out of " + (steps*steps));
 toc
 
 % --- Analyse grid search the Mercury-Earth Leg ---
@@ -185,7 +185,7 @@ dv_grid3_norm = vecnorm(dv_grid3, 2, 3);
 dv_grid3_valid_rows = unique(dv_grid3_valid_rows, "stable");
 dv_grid3_valid_cols = unique(dv_grid3_valid_cols, "stable");
 disp("complete!");
-disp("found " + length(dv_grid3_valid_rows)*length(dv_grid3_valid_cols) + " valid options out of " + (length(dv_grid1_valid_rows)*steps));
+disp("found " + length(dv_grid3_valid_rows) + " valid options out of " + (length(dv_grid1_valid_rows)*steps));
 toc
 
 % --- Analyse grid search the Earth-Asteroid Leg ---
@@ -214,7 +214,7 @@ for j = 1:length(possible_flyby_idxs)
     jj = possible_flyby_idxs(j);
     V_planet = VE_list(jj, :);
     
-    % --- OPTIMIZATION 1: Pre-calculate Leg 2 (Earth->Asteroid) for this date ---
+    % 1: Pre-calculate Leg 2 for this date
     % Find valid Asteroid arrivals ONLY for this Earth departure date
     valid_k_indices = find(~isnan(dv_grid3_norm(jj, :)));
     
@@ -258,7 +258,7 @@ for j = 1:length(possible_flyby_idxs)
         e_minus_crit = 1 + rp_crit * v_inf_minus_norm^2 / planet_E_mu;
         delta_minus_crit = 2 * asin(1/e_minus_crit);
         
-        % --- OPTIMIZATION 2: Vectorized Matching ---
+        % --- Vectorized Matching ---
         % Calculate Delta V for flyby (Matrix - Vector)
         dv_fb_matrix = V_plus_matrix - V_minus;
         dv_fb_norms = vecnorm(dv_fb_matrix, 2, 2);
@@ -315,12 +315,11 @@ for j = 1:length(possible_flyby_idxs)
     end
 end
 
-% Solve for exact perigee height (remains the same)
+% Solve for exact perigee height
 eq = @(rp) opt_delta - ...
     asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
     asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
 opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
-disp("complete!"); toc
 
 opt_dv_launch_norm = norm(opt_dv_launch);
 opt_dv_fb_norm = norm(opt_dv_fb);
@@ -341,30 +340,55 @@ opt_dv_p = opt_v_p_plus - opt_v_p_minus;
 
 opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
 
+disp("complete!"); toc
+
+%% Final Results Output
+
 disp("optimal incoming turn angle [deg]: " + rad2deg(opt_semi_delta_minus))
 disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_semi_delta_plus))
 disp("optimal total turn angle [deg]: " + rad2deg(opt_delta))
 disp("optimal perigee passage height [km]: " + opt_rp)
 
-%% Final Results Output
+% --- heliocentric trajectory ---
 [optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
 [~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
+
+fprintf("\n=== HELIOCENTRIC TRAJECTORY ===\n");
+fprintf("--- OPTIMAL DATES ---\n")
+fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
+fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
+
+fprintf("\nEARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
+fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
+
+fprintf("\nASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
+fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
+
+% --- interplanetary arc 1 characterisation ---
+[...
+    opt_a1, ...
+    opt_e1, ...
+    opt_i1, ...
+    opt_Om1, ...
+    opt_om1, ...
+    opt_TA1...
+    ] = car2kep( ...
+    RM_list(1, :), ...
+    reshape(V1_grid(optimal_M_idx, optimal_E_idx, :), [], 3), ...
+    mu_sun);
+fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 1 (MERCURY-EARTH) ---\n")
+fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a1);
+fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e1);
+fprintf("INCLINATION          [deg]  i: %.4f\n", rad2deg(opt_i1));
+fprintf("RIGHT ASCENSION      [deg] Om: %.4f\n", rad2deg(opt_Om1));
+fprintf("ARGUMENT OF PERIGEE  [deg] om: %.4f\n", rad2deg(opt_om1));
+fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA1));
+
 
 fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
 fprintf("MERCURY LAUNCH ΔV      : %.4f km s^-1\n", opt_dv_launch_norm);
 fprintf("FLY-BY ΔV @ PERICENTRE : %.4f km s^-1\n", opt_dv_p);
 fprintf("ASTEROID RENDEZ-VOUS ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
-
-fprintf("\nOPTIMAL DATES\n")
-fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
-fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
-
-fprintf("EARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
-fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
-
-fprintf("ASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
-fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
-
 %% Plot the transfer trajectory for this mission
 % --- set up times and options ---
 mjd2k1 = time_list(optimal_M_idx);
@@ -447,8 +471,10 @@ plot3(R_E(:, 1), R_E(:, 2), R_E(:, 3), "g");
 % f. asteroid orbit
 plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b");
 
-% g. planet mercury important positions (departure
+% g. planet mercury at departure, fly-by, and arrival
 scatter3(R_M(1, 1), R_M(1, 2), R_M(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
+scatter3(R_M(optimal_E_idx, 1), R_M(optimal_E_idx, 2), R_M(optimal_E_idx, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
+scatter3(R_M(optimal_A_idx, 1), R_M(optimal_A_idx, 2), R_M(optimal_A_idx, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
 
 % h. planet earth important positions (departure and gravity assist)
 scatter3(R_E(1, 1), R_E(1, 2), R_E(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
@@ -472,9 +498,13 @@ legend( ...
     "", ... e. planet earth orbit
     "", ... f. asteroid orbit
     "Mercury at departure", ...
+    "Mercury during GA", ...
+    "Mercury at arrival", ...
     "Earth at departure", ...
-    "Earth at GA", ...
+    "Earth during GA", ...
+    "Earth at arrival", ...
     "Asteroid at departure", ...
+    "Asteroid during fly-by", ...
     "Asteroid at rendez-vous", ...
     "" ... j. sun position
     );
