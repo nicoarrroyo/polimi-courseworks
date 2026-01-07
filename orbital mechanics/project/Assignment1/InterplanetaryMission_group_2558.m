@@ -199,7 +199,7 @@ fprintf("\nconducting grid search 3 (flyby)... "); tic
 possible_flyby_idxs = intersect(dv_grid1_valid_cols, dv_grid3_valid_rows);
 rp_crit = planet_E_r + 500;
 
-opt_dv_tot_norm = Inf; % Initialize variable for comparison
+opt_dv_tot_norm_search = Inf; % Initialize variable for comparison
 
 % Initialize optimal storage variables
 opt_dv_launch = [0,0,0];
@@ -250,7 +250,7 @@ for j = 1:length(possible_flyby_idxs)
         v_inf_minus_norm = norm(v_inf_minus);
         
         % Optimization check: If Leg 1 alone is worse than best total, skip
-        if dv_launch_norm >= opt_dv_tot_norm
+        if dv_launch_norm >= opt_dv_tot_norm_search
             continue
         end
         
@@ -267,7 +267,7 @@ for j = 1:length(possible_flyby_idxs)
         
         % Filter 1: Check Delta V limit and if better than current best
         % This creates a boolean mask to process only promising candidates
-        candidates = (dv_fb_norms <= dv_lim) & (dv_tot_norms < opt_dv_tot_norm);
+        candidates = (dv_fb_norms <= dv_lim) & (dv_tot_norms < opt_dv_tot_norm_search);
         
         if ~any(candidates)
             continue
@@ -294,9 +294,9 @@ for j = 1:length(possible_flyby_idxs)
             % Identify the best one among these specific valid turns
             [min_val, best_local_idx] = min(dv_tot_norms(cand_idx(final_subset_idx)));
             
-            if min_val < opt_dv_tot_norm
+            if min_val < opt_dv_tot_norm_search
                 % Update global optimum
-                opt_dv_tot_norm = min_val;
+                opt_dv_tot_norm_search = min_val;
                 
                 % Map back to original K index
                 k_idx_in_valid_list = cand_idx(final_subset_idx(best_local_idx));
@@ -318,31 +318,41 @@ end
 eq = @(rp) opt_delta - ...
     asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
     asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
-rp_ans = fzero(eq, rp_crit, optimset("Display", "off"));
+opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
 disp("complete!"); toc
 
 opt_dv_launch_norm = norm(opt_dv_launch);
 opt_dv_fb_norm = norm(opt_dv_fb);
 opt_dv_rv_norm = norm(opt_dv_rv);
 
-opt_e_minus = 1 + rp_ans*opt_v_inf_minus_norm^2/planet_E_mu;
+opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
 opt_delta_minus = asin(1/opt_e_minus);
-opt_e_plus = 1 + rp_ans*opt_v_inf_plus_norm^2/planet_E_mu;
+opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
 opt_delta_plus = asin(1/opt_e_plus);
+
+opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
+opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
+
+opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
+opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
+
+opt_dv_p = opt_v_p_plus - opt_v_p_minus;
+
+opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
 
 disp("optimal incoming turn angle [deg]: " + rad2deg(opt_delta_minus))
 disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_delta_plus))
 disp("optimal total turn angle [deg]: " + rad2deg(opt_delta))
-disp("optimal perigee passage height [km]: " + rp_ans)
+disp("optimal perigee passage height [km]: " + opt_rp)
 
 %% Final Results Output
 [optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
 [~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
 
 fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
-fprintf("LEG 1 ΔV: %.4f km s^-1\n", opt_dv_launch_norm);
-fprintf("LEG 2 ΔV: %.4f km s^-1\n", opt_dv_fb_norm);
-fprintf("LEG 3 ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
+fprintf("MERCURY LAUNCH ΔV      : %.4f km s^-1\n", opt_dv_launch_norm);
+fprintf("FLY-BY ΔV @ PERICENTRE : %.4f km s^-1\n", opt_dv_p);
+fprintf("ASTEROID RENDEZ-VOUS ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
 
 fprintf("\nOPTIMAL DATES\n")
 fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
@@ -527,3 +537,71 @@ for i = 1:length(t_full)
 
     drawnow limitrate; pause(0.03); 
 end
+
+%% plot flyby hyperbola in geocentric perifocal frame
+% plot the two planetocentric hyperbolic arcs
+figure("Name", "Planetocentric Powered Earth Fly-By"); hold on;
+
+% --- set up ode solver conditions ---
+options = odeset("RelTol", 1e-13, "AbsTol", 1e-14);
+steps = 100;
+tspan = linspace(0, 4800, steps);
+
+% --- propagate and plot incoming planetocentric arc ---
+y = [[opt_rp; 0; 0] [0; opt_v_p_minus; 0;]];
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,planet_E_mu), -tspan, y, options);
+r_minus = Y(:, 1:3) ./ planet_E_r;
+plot3(r_minus(:, 1), r_minus(:, 2), r_minus(:, 3), "r")
+
+% --- propagate and plot outgoing planetocentric arc ---
+y = [[opt_rp; 0; 0] [0; opt_v_p_plus; 0;]];
+[~, Y] = ode113(@(t,y) ode_2bp(t,y,planet_E_mu), tspan, y, options);
+r_plus = Y(:, 1:3) ./ planet_E_r;
+plot3(r_plus(:, 1), r_plus(:, 2), r_plus(:, 3), "g")
+
+% --- plot earth surface texture ---
+earth_img = imread("EarthTexture.jpg");
+[x_earth, y_earth, z_earth] = sphere(50);
+surface(x_earth, y_earth, -z_earth, "FaceColor", ...
+    "texturemap", "CData", earth_img, "EdgeColor", "none")
+
+% --- finish up plot properties ---
+legend("Incoming trajectory", "Outgoing trajectory", "")
+xlabel("X [r_E_a_r_t_h]"); ylabel("Y [r_E_a_r_t_h]"); zlabel("Z [r_E_a_r_t_h]");
+title("Powered Earth Fly-by Trajectory");
+grid on; axis equal; hold off;
+
+%% plot flyby hyperbola in heliocentric perifocal frame
+figure("Name", "Heliocentric Powered Earth Fly-By"); hold on;
+steps = 1000;
+tspan_helio = linspace(0, 60*60*24*30, steps);
+
+% --- plot earth surface texture ---
+earth_img = imread("EarthTexture.jpg");
+[x_earth, y_earth, z_earth] = sphere(50);
+surface( ...
+    x_earth * planet_E_r * 1000 + RSE(1), ...
+    y_earth * planet_E_r * 1000 + RSE(2), ...
+    -(z_earth * planet_E_r * 1000 + RSE(3)), ...
+    "FaceColor", "texturemap", "CData", earth_img, "EdgeColor", "none")
+
+% --- plot incoming heliocentric arc ---
+plot3(R_dep(:, 1).*AU, R_dep(:, 2).*AU, R_dep(:, 3).*AU); % incoming trajectory
+
+% --- plot outgoing heliocentric arc ---
+plot3(R_GA(:, 1).*AU, R_GA(:, 2).*AU, R_GA(:, 3).*AU); % outgoing trajectory
+
+% --- plot mercury orbit ---
+plot3(R_M(:, 1).*AU, R_M(:, 2).*AU, R_M(:, 3).*AU, "r");
+
+% --- plot earth orbit ---
+plot3(R_E(:, 1).*AU, R_E(:, 2).*AU, R_E(:, 3).*AU, "g");
+
+% --- plot sun ---
+scatter3(0, 0, 0, 500, "y", "filled");
+
+% --- finish up plot properties ---
+legend("", "Incoming Trajectory", "Outgoing Trajectory", "Mercury Orbit", "Earth Orbit", "Sun")
+xlabel("X [km]"); ylabel("Y [km]"); zlabel("Z [km]");
+title("Powered Earth Fly-by Trajectory");
+grid on; axis equal; hold off;
