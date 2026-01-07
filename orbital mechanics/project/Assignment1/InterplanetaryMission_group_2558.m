@@ -317,6 +317,13 @@ end
 disp("complete!"); toc
 
 %% Final Results Calculations
+% Calculate all optimal delta-vs
+opt_dv_launch_norm = norm(opt_dv_launch);
+opt_dv_fb_norm = norm(opt_dv_fb);
+opt_dv_rv_norm = norm(opt_dv_rv);
+opt_dv_p = opt_v_p_plus - opt_v_p_minus;
+opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
+
 [optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
 [~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
 
@@ -374,13 +381,6 @@ opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
 opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
 opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
 
-% Calculate all optimal delta-vs
-opt_dv_launch_norm = norm(opt_dv_launch);
-opt_dv_fb_norm = norm(opt_dv_fb);
-opt_dv_rv_norm = norm(opt_dv_rv);
-opt_dv_p = opt_v_p_plus - opt_v_p_minus;
-opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
-
 %% Final Results Output
 % --- Heliocentric trajectory --- %
 % Departure, flyby, and arrival times
@@ -427,7 +427,7 @@ fprintf("TOTAL TURN ANGLE δ     [deg]: %.4f\n", rad2deg(opt_delta))
 
 % --- Cost of the mission --- %
 fprintf("\n=== COST OF MISSION ===\n")
-fprintf("TOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
+fprintf("TOTAL ΔV REQUIRED      : %.4f km s^-1\n", opt_dv_tot_norm);
 fprintf("MERCURY LAUNCH ΔV      : %.4f km s^-1\n", opt_dv_launch_norm);
 fprintf("FLY-BY ΔV @ PERICENTRE : %.4f km s^-1\n", opt_dv_p);
 fprintf("ASTEROID RENDEZ-VOUS ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
