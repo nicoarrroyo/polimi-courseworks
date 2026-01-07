@@ -317,6 +317,24 @@ end
 disp("complete!"); toc
 
 %% Final Results Calculations
+% Calculate lowest pericentre passage
+eq = @(rp) opt_delta - ...
+    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
+    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
+opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
+
+% Calculate turn angles
+opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
+opt_semi_delta_minus = asin(1/opt_e_minus);
+opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
+opt_semi_delta_plus = asin(1/opt_e_plus);
+
+% Calculate pericentre velocities
+opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
+opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
+opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
+opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
+
 % Calculate all optimal delta-vs
 opt_dv_launch_norm = norm(opt_dv_launch);
 opt_dv_fb_norm = norm(opt_dv_fb);
@@ -350,12 +368,6 @@ opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
     reshape(V3_grid(optimal_E_idx, optimal_A_idx, :), [], 3), ...
     mu_sun);
 
-% Calculate lowest pericentre passage
-eq = @(rp) opt_delta - ...
-    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
-    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
-opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
-
 % Calculate fly-by duration
 R_soi = AU * (planet_E_mu / mu_sun)^(2/5); % Radius of Sphere of Influence [km]
 opt_a_hyp = -planet_E_mu / opt_v_inf_minus_norm^2; % Hyperbolic semi-major axis [km]
@@ -368,18 +380,6 @@ opt_tof_fb_hours = floor(opt_tof_fb / 3600); % just the hours
 opt_tof_fb_minutes = floor(mod(opt_tof_fb, 3600) / 60); % just the minutes
 opt_tof_fb_seconds = mod(opt_tof_fb, 60); % just the seconds
 opt_tof_fb_hms = [opt_tof_fb_hours opt_tof_fb_minutes opt_tof_fb_seconds];
-
-% Calculate turn angles
-opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
-opt_semi_delta_minus = asin(1/opt_e_minus);
-opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
-opt_semi_delta_plus = asin(1/opt_e_plus);
-
-% Calculate pericentre velocities
-opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
-opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
-opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
-opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
 
 %% Final Results Output
 % --- Heliocentric trajectory --- %
