@@ -314,68 +314,48 @@ for j = 1:length(possible_flyby_idxs)
         end
     end
 end
-
-% Solve for exact perigee height
-eq = @(rp) opt_delta - ...
-    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
-    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
-opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
-
-opt_dv_launch_norm = norm(opt_dv_launch);
-opt_dv_fb_norm = norm(opt_dv_fb);
-opt_dv_rv_norm = norm(opt_dv_rv);
-
-opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
-opt_semi_delta_minus = asin(1/opt_e_minus);
-opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
-opt_semi_delta_plus = asin(1/opt_e_plus);
-
-opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
-opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
-
-opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
-opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
-
-opt_dv_p = opt_v_p_plus - opt_v_p_minus;
-
-opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
-
 disp("complete!"); toc
 
 %% Final Results Output
-
-disp("optimal incoming turn angle [deg]: " + rad2deg(opt_semi_delta_minus))
-disp("optimal outgoing turn angle [deg]: " + rad2deg(opt_semi_delta_plus))
-disp("optimal total turn angle [deg]: " + rad2deg(opt_delta))
-disp("optimal perigee passage height [km]: " + opt_rp)
-
-% --- heliocentric trajectory ---
+% --- Heliocentric trajectory --- %
 [optimal_M_idx, optimal_E_idx] = find(dv_grid1_norm == opt_dv_launch_norm);
 [~, optimal_A_idx] = find(dv_grid3_norm == opt_dv_rv_norm);
 
+% Departure, flyby, and arrival times
 fprintf("\n=== HELIOCENTRIC TRAJECTORY ===\n");
 fprintf("--- OPTIMAL DATES ---\n")
 fprintf("MERCURY DEP   MJD2000 %.3f\n", time_list(optimal_M_idx));
 fprintf("MERCURY DEP   DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_M_idx)));
 
-fprintf("\nEARTH ARR/DEP MJD2000 %.3f\n", time_list(optimal_E_idx));
-fprintf("EARTH ARR/DEP DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
+fprintf("\nEARTH FLY-BY MJD2000  %.3f\n", time_list(optimal_E_idx));
+fprintf("EARTH FLY-BY DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_E_idx)));
 
-fprintf("\nASTEROID ARR  MJD2000 %.3f\n", time_list(optimal_A_idx));
-fprintf("ASTEROID ARR  DATE    %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
+fprintf("\nASTEROID ARR MJD2000  %.3f\n", time_list(optimal_A_idx));
+fprintf("ASTEROID ARR DATE     %.0f %.0f %.0f %.0f %.0f %.0f\n", mjd20002date(time_list(optimal_A_idx)));
 
-% --- interplanetary arc 1 characterisation ---
+% Interplanetary arcs characterisations
 [...
     opt_a1, ...
     opt_e1, ...
     opt_i1, ...
     opt_Om1, ...
     opt_om1, ...
-    opt_TA1...
-    ] = car2kep( ...
+    opt_TA1] = car2kep( ...
     RM_list(1, :), ...
     reshape(V1_grid(optimal_M_idx, optimal_E_idx, :), [], 3), ...
     mu_sun);
+[...
+    opt_a2, ...
+    opt_e2, ...
+    opt_i2, ...
+    opt_Om2, ...
+    opt_om2, ...
+    opt_TA2...
+    ] = car2kep( ...
+    RE_list(1, :), ...
+    reshape(V3_grid(optimal_E_idx, optimal_A_idx, :), [], 3), ...
+    mu_sun);
+
 fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 1 (MERCURY-EARTH) ---\n")
 fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a1);
 fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e1);
@@ -384,11 +364,55 @@ fprintf("RIGHT ASCENSION      [deg] Om: %.4f\n", rad2deg(opt_Om1));
 fprintf("ARGUMENT OF PERIGEE  [deg] om: %.4f\n", rad2deg(opt_om1));
 fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA1));
 
+fprintf("\n--- CHARACTERISATION OF INTERPLANETARY ARC 2 (MERCURY-EARTH) ---\n")
+fprintf("SEMI MAJOR AXIS       [km]  a: %.4f\n", opt_a2);
+fprintf("ECCENTRICITY           [-]  e: %.4f\n", opt_e2);
+fprintf("INCLINATION          [deg]  i: %.4f\n", rad2deg(opt_i2));
+fprintf("RIGHT ASCENSION      [deg] Om: %.4f\n", rad2deg(opt_Om2));
+fprintf("ARGUMENT OF PERIGEE  [deg] om: %.4f\n", rad2deg(opt_om2));
+fprintf("TRUE ANOMALY (@ dep) [deg] TA: %.4f\n", rad2deg(opt_TA2));
 
+% Heliocentric trajectory plot
+% see plot section below
+
+% --- Powered gravity assist ---
+eq = @(rp) opt_delta - ...
+    asin(1 / (1 + (rp * opt_v_inf_plus_norm^2) / planet_E_mu)) - ...
+    asin(1 / (1 + (rp * opt_v_inf_minus_norm^2) / planet_E_mu));
+opt_rp = fzero(eq, rp_crit, optimset("Display", "off"));
+
+opt_e_minus = 1 + opt_rp*opt_v_inf_minus_norm^2/planet_E_mu;
+opt_semi_delta_minus = asin(1/opt_e_minus);
+opt_e_plus = 1 + opt_rp*opt_v_inf_plus_norm^2/planet_E_mu;
+opt_semi_delta_plus = asin(1/opt_e_plus);
+
+opt_a_minus = -planet_E_mu / opt_v_inf_minus_norm^2;
+opt_v_p_minus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_minus));
+opt_a_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
+opt_v_p_plus = sqrt(planet_E_mu * (2/opt_rp - 1/opt_a_plus));
+
+opt_dv_launch_norm = norm(opt_dv_launch);
+opt_dv_fb_norm = norm(opt_dv_fb);
+opt_dv_rv_norm = norm(opt_dv_rv);
+opt_dv_p = opt_v_p_plus - opt_v_p_minus;
+opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
+% opt_tof_fb = HOW DO I DO THIS???
+
+fprintf("\n=== POWERED GRAVITY ASSIST ===\n")
+fprintf("ALT OF CLOSEST APPROACH [km]: %.4f\n", opt_rp-planet_E_r);
+%fprintf("TIME DURATION OF FLYBY   [s]: %.4f\n", opt_tof_fb);
+fprintf("DELTA-V FROM FLYBY    [km/s]: %.4f\n", opt_dv_fb_norm);
+fprintf("DELTA-V FROM MANOUVRE [km/s]: %.4f\n", opt_dv_p);
+fprintf("INCOMING HYPERBOLA δ/2 [deg] %.4f\n", rad2deg(opt_semi_delta_minus))
+fprintf("OUTGOING HYPERBOLA δ/2 [deg] %.4f\n", rad2deg(opt_semi_delta_plus))
+fprintf("TOTAL TURN ANGLE δ [deg] %.4f\n", rad2deg(opt_delta))
+
+% --- Cost of the mission ---
 fprintf("\nTOTAL ΔV REQUIRED: %.4f km s^-1\n", opt_dv_tot_norm);
 fprintf("MERCURY LAUNCH ΔV      : %.4f km s^-1\n", opt_dv_launch_norm);
 fprintf("FLY-BY ΔV @ PERICENTRE : %.4f km s^-1\n", opt_dv_p);
 fprintf("ASTEROID RENDEZ-VOUS ΔV: %.4f km s^-1\n", opt_dv_rv_norm);
+
 %% Plot the transfer trajectory for this mission
 % --- set up times and options ---
 mjd2k1 = time_list(optimal_M_idx);
@@ -472,20 +496,22 @@ plot3(R_E(:, 1), R_E(:, 2), R_E(:, 3), "g");
 plot3(R_A(:, 1), R_A(:, 2), R_A(:, 3), "b");
 
 % g. planet mercury at departure, fly-by, and arrival
-scatter3(R_M(1, 1), R_M(1, 2), R_M(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
-scatter3(R_M(optimal_E_idx, 1), R_M(optimal_E_idx, 2), R_M(optimal_E_idx, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
-scatter3(R_M(optimal_A_idx, 1), R_M(optimal_A_idx, 2), R_M(optimal_A_idx, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "r");
+scatter3(R_M(1, 1), R_M(1, 2), R_M(1, 3), "r");
+scatter3(R_M(optimal_E_idx, 1), R_M(optimal_E_idx, 2), R_M(optimal_E_idx, 3), "r*");
+scatter3(R_M(optimal_A_idx, 1), R_M(optimal_A_idx, 2), R_M(optimal_A_idx, 3), "filled", "r");
 
-% h. planet earth important positions (departure and gravity assist)
-scatter3(R_E(1, 1), R_E(1, 2), R_E(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "g");
-scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "filled", "MarkerFaceColor", "g");
+% h. planet earth at departure, fly-by, and arrival
+scatter3(R_E(1, 1), R_E(1, 2), R_E(1, 3), "g");
+scatter3(R_GA(1, 1), R_GA(1, 2), R_GA(1, 3), "y*");
+scatter3(R_E(optimal_A_idx, 1), R_E(optimal_A_idx, 2), R_E(optimal_A_idx, 3), "filled", "g");
 
-% i. asteroid boundary positions (departure and rendez-vous)
-scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "MarkerFaceColor", "none", "MarkerEdgeColor", "b");
-scatter3(R_rv(1, 1), R_rv(1, 2), R_rv(1, 3), "filled", "MarkerFaceColor", "b");
+% i. asteroid at departure, fly-by, and arrival
+scatter3(R_A(1, 1), R_A(1, 2), R_A(1, 3), "b");
+scatter3(R_A(optimal_E_idx, 1), R_A(optimal_E_idx, 2), R_A(optimal_E_idx, 3), "b*")
+scatter3(R_rv(1, 1), R_rv(1, 2), R_rv(1, 3), "filled", "b");
 
 % j. sun position
-scatter3(0, 0, 0, "filled", "MarkerFaceColor", "y");
+scatter3(0, 0, 0, "filled", "y");
 
 % --- plot properties ---
 xlabel("X [AU]"); ylabel("Y [AU]"); zlabel("Z [AU]");
@@ -506,7 +532,7 @@ legend( ...
     "Asteroid at departure", ...
     "Asteroid during fly-by", ...
     "Asteroid at rendez-vous", ...
-    "" ... j. sun position
+    "Sun" ... j. sun position
     );
 axis equal; grid on; view(3);
 hold off;
