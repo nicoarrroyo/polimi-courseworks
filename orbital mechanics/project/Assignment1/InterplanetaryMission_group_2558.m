@@ -1,4 +1,86 @@
-clear; close all; clc;
+clear; close all; %clc;
+
+mu_sun = astroConstants(4);
+AU = astroConstants(2);
+mu_earth = astroConstants(13);
+R_earth = astroConstants(23);
+h_atm = 300;                           % height of the Earth's atmosphere
+safety = 200;                          % safety margin
+r_p_min = R_earth + h_atm + safety;    % minimum radius for the fly-by
+
+%% Estimates of the first heliocentric leg: synodic period, time of flight
+% Important assumptions: orbits are coplanar and circular
+
+% Average distance of Mercury and Earth from the Sun
+r_M = 0.3871 * AU;
+r_E = 1.0000 * AU;
+
+% Orbital period
+T_M = 2 * pi * sqrt(r_M^3 / mu_sun);
+T_E = 2 * pi * sqrt(r_E^3 / mu_sun);
+
+% Synodic period
+T_syn1 = T_M * T_E / abs(T_M - T_E);
+
+% Time of flight
+a1_H = (r_M + r_E) / 2;
+T1_H = 2 * pi * sqrt(a1_H^3 / mu_sun);
+TOF1 = T1_H / 2;
+
+fprintf('---- ESTIMATES FIRST HELIOCENTRIC LEG (MERCURY-EARTH) ---- \n');
+fprintf('Synodic period = %.2f [days]\n', T_syn1 / 86400);
+fprintf('TOF = %.2f [days] \n\n', TOF1 / 86400);
+
+%% Estimates of the second heliocentric leg: synodic period, time of flight
+date_window = [2030, 1, 1, 0, 0, 0;
+               2060, 1, 1, 0, 0, 0];
+dates = dateWindow(date_window, 1);
+
+N = size(dates, 1);
+dates_mjd2000 = zeros(N, 1);
+kepAsteroid = zeros(N, 6);
+
+for ii = 1:N
+    dates_mjd2000(ii) = date2mjd2000(dates(ii, :));
+    [kep, ~, ~] = ephAsteroids(dates_mjd2000(ii), 316801);
+    kepAsteroid(ii,:) = kep;
+end
+
+% Averaged values
+aAst_averaged = mean(kepAsteroid(:,1));
+eAst_averaged = mean(kepAsteroid(:,2));
+iAst_averaged = mean(kepAsteroid(:,3));
+OMAst_averaged = mean(kepAsteroid(:,4));
+omAst_averaged = mean(kepAsteroid(:,5));
+
+% Average distance of Asteroid 316801 from the Sun
+r_A = aAst_averaged;
+T_A = 2 * pi * sqrt(r_A^3 / mu_sun);
+
+% Synodic period
+T_syn2 = T_E * T_A / abs(T_E - T_A);
+
+% Time of flight
+a2_H = (r_E + r_A) / 2;
+T2_H = 2*pi*sqrt(a2_H^3 / mu_sun);
+TOF2 = T2_H / 2;
+
+fprintf('---- ESTIMATES SECOND HELIOCENTRIC LEG (EARTH-ASTEROID) ---- \n');
+fprintf('Synodic period = %.2f [days]\n', T_syn2 / 86400);
+fprintf('TOF = %.2f [days] \n\n', TOF2 / 86400);
+
+%% Values for subsequent calculations based on preliminary estimates
+% First heliocentric leg
+T_syn_ME = 116;    % days
+TOF_ME = 105;      % days
+TOF_ME_min = 80;   % days
+TOF_ME_max = 130;  % days
+
+% Second heliocentric leg
+T_syn_EA = 472;    % days
+TOF_EA = 459;      % days
+TOF_EA_min = 300;  % days
+TOF_EA_max = 650;  % days
 
 %% 1. Constants
 steps = 500;
@@ -370,12 +452,20 @@ opt_dv_tot_norm = opt_dv_launch_norm + opt_dv_p + opt_dv_rv_norm;
 
 % Calculate fly-by duration
 R_soi = AU * (planet_E_mu / mu_sun)^(2/5); % Radius of Sphere of Influence [km]
-opt_a_hyp = -planet_E_mu / opt_v_inf_minus_norm^2; % Hyperbolic semi-major axis [km]
-opt_e_hyp = 1 + (rp_crit * opt_v_inf_minus_norm^2) / planet_E_mu; % Hyperbolic eccentricity [-]
-H_soi = acosh((1 - R_soi/opt_a_hyp) / opt_e_hyp); % Hyperbolic anomaly at SOI boundary [rad]
-M_soi = opt_e_hyp * sinh(H_soi) - H_soi; % Mean anomaly at SOI boundary [rad]
-n = sqrt(planet_E_mu / abs(opt_a_hyp)^3); % Mean motion [km/s]
-opt_tof_fb = 2 * M_soi / n; % total, in seconds
+
+opt_a_hyp_minus = -planet_E_mu / opt_v_inf_minus_norm^2; % Hyperbolic semi-major axis [km]
+opt_e_hyp_minus = 1 + (opt_rp * opt_v_inf_minus_norm^2) / planet_E_mu; % Hyperbolic eccentricity [-]
+H_soi_minus = acosh((1 - R_soi/opt_a_hyp_minus) / opt_e_hyp_minus); % Hyperbolic anomaly at SOI boundary [rad]
+M_soi_minus = opt_e_hyp_minus * sinh(H_soi_minus) - H_soi_minus; % Mean anomaly at SOI boundary [rad]
+n_minus = sqrt(planet_E_mu / abs(opt_a_hyp_minus)^3); % Mean motion [km/s]
+
+opt_a_hyp_plus = -planet_E_mu / opt_v_inf_plus_norm^2;
+opt_e_hyp_plus = 1 + (opt_rp * opt_v_inf_plus_norm^2) / planet_E_mu;
+H_soi_plus = acosh((1 - R_soi/opt_a_hyp_plus) / opt_e_hyp_plus);
+M_soi_plus = opt_e_hyp_plus * sinh(H_soi_plus) - H_soi_plus;
+n_plus = sqrt(planet_E_mu / abs(opt_a_hyp_plus)^3);
+
+opt_tof_fb = (M_soi_minus / n_minus) + (M_soi_plus / n_plus); % total, in seconds
 opt_tof_fb_hours = floor(opt_tof_fb / 3600); % just the hours
 opt_tof_fb_minutes = floor(mod(opt_tof_fb, 3600) / 60); % just the minutes
 opt_tof_fb_seconds = mod(opt_tof_fb, 60); % just the seconds
