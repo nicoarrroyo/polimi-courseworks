@@ -41,6 +41,41 @@ for i = 1:3
     fprintf("======================================\n")
 end
 
+
+%% better action time find
+pbar = pbar2439;
+actionA = [0 0 0];
+actionG = [0 0 0];
+found_up = 0;
+found_down = 0;
+
+for i = 1:3
+    fprintf("\n============== COLUMN %.0f ==============\n", i)
+    [pmax, pmax_idx] = max(pbar(:, i));
+    for j = 1:pmax_idx-1
+        if pbar(pmax_idx-j, i) < 0.05*pmax && found_up ~= 1
+            found_up = 1;
+            actionA(i) = pbar(pmax_idx-j, i);
+
+            fprintf("found action time A at %.0f\n", j)
+            fprintf("maximum pressure %.2f\n", max_p)
+            fprintf("upwards inflection point pressure %.2f\n", actionA(i))
+        end
+    end
+    for j = pmax_idx:length(pbar(:, i))
+        if pbar(j, i) < 0.05*pmax && found_down ~= 1
+            found_down = 1;
+            actionG(i) = pbar(j, i);
+
+            fprintf("found action time G at %.0f\n", j)
+            fprintf("maximum pressure %.2f\n", max_p)
+            fprintf("downwards inflection point pressure %.2f\n", actionG(i))
+        end
+    end
+    fprintf("======================================\n")
+end
+
+
 %% plot
 figure()
 plot(pbar(1:200, :), linewidth=1)
