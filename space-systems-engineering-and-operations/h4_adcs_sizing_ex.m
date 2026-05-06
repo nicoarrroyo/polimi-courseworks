@@ -333,17 +333,6 @@ fprintf(' Cyclic MAG peak momentum = %.4f  Nms  (≪ h_max = %.1f Nms ✓)\n\n',
 t_plot   = linspace(0, N_orb * T_orb, 5000);
 h_sec    = T_dis * t_plot; % Secular (GG)
 
-% figure('Name','Momentum Accumulation','Color','w','Position',[100 100 800 420]);
-% hold on; grid on;
-% plot(t_plot/T_orb, h_sec,   '--b', 'LineWidth', 1.5, 'DisplayName','Secular Buildup (GG, SRP, AERO)');
-% plot(t_plot/T_orb, h_total, '-k',  'LineWidth', 2.0, 'DisplayName','Total Stored Momentum');
-% yline(h_rw_max, '--m', 'LineWidth', 1.5, 'DisplayName', 'h_{max}');
-% xlabel('Time [Orbits]', 'FontSize', 12);
-% ylabel('Momentum [Nms]', 'FontSize', 12);
-% title('Reaction Wheel Momentum Loading', 'FontSize', 13, 'FontWeight', 'bold');
-% legend('Location','northwest', 'FontSize', 10);
-% xlim([0, N_orb]); ylim([0, h_rw_max*1.1]);
-
 % -------------------------------------------------------------------------
 %  3.2  Slew Maneuver Sizing
 % -------------------------------------------------------------------------
@@ -376,28 +365,6 @@ fprintf(' T_reduced  = I_max · θ̇_max² / θ_slew = %.4f  Nm\n', T_reduced);
 fprintf(' t_slew     = 2 · θ̇_max · I_max / T   = %.1f  s\n', t_slew_red);
 fprintf(' h_slew_peak = I_max · θ̇_max           = %.2f  Nms\n\n', h_slew_max_B);
 
-% -------------------------------------------------------------------------
-%  Plot: Angular rate profiles for both cases
-% -------------------------------------------------------------------------
-figure('Name','Slew Angular Rate Profiles','Color','w','Position',[100 550 800 420]);
-hold on; grid on;
-
-% Case A – max torque (trapezoidal, symmetric)
-t_A = [0, t_slew_min/2, t_slew_min];
-r_A = [0, rate_slew_max_A, 0] * (180/pi);
-plot(t_A, r_A, '-r', 'LineWidth', 2, 'DisplayName', sprintf('Max torque (T=%.3f Nm)', T_rw_max));
-
-% Case B – reduced torque
-t_B = [0, t_slew_red/2, t_slew_red];
-r_B = [0, rate_max, 0] * (180/pi);
-plot(t_B, r_B, '-b', 'LineWidth', 2, 'DisplayName', sprintf('Reduced torque (T=%.3f Nm)', T_reduced));
-
-yline(rate_max*(180/pi), '--k', 'LineWidth', 1.2, 'DisplayName', 'Rate limit 0.5°/s');
-xlabel('Time [s]', 'FontSize', 12);
-ylabel('Angular Rate [°/s]', 'FontSize', 12);
-title('Slew Maneuver – Angular Rate Profiles (Reaction Wheels)', 'FontSize', 13, 'FontWeight', 'bold');
-legend('Location', 'north', 'FontSize', 10);
-
 %% ========================================================================
 %  4. MAGNETORQUER SIZING – SLEW MANEUVER
 % =========================================================================
@@ -416,17 +383,19 @@ fprintf('===========================================================\n');
 fprintf('  5. RESULTS SUMMARY\n');
 fprintf('===========================================================\n\n');
 
-fprintf(' %-23s %13s %12.4e %6s\n', 'GG Torque',                "T_gg", T_gg, 'Nm');
-fprintf(' %-23s %13s %12.4e %6s\n', 'SRP Torque',               "T_srp", T_srp, "Nm");
-fprintf(' %-23s %13s %12.4e %6s\n', 'Tot. disturbance',         "T_dis", T_dis, "Nm");
-fprintf(' %-23s %13s %12.4f %6s\n', 'Momentum per orbit',       "h_orbit", h_orbit, "Nms");
-fprintf(' %-23s %13s %12.2f %6s\n', 'Orbits before RW satur.',  "N_orb", N_orb, "orb");
+fprintf(' %-23s %13s %12.4e %6s\n', 'GG Torque',            "T_gg", T_gg, 'Nm');
+fprintf(' %-23s %13s %12.4e %6s\n', 'SRP Torque',           "T_srp", T_srp, "Nm");
+fprintf(' %-23s %13s %12.4e %6s\n', 'Mag Torque',           "T_mag", T_mag, "Nm");
+fprintf(' %-23s %13s %12.4e %6s\n', 'Aero Torque',          "T_aero", T_aero, "Nm");
+fprintf(' %-23s %13s %12.4e %6s\n', 'Tot. disturbance',     "T_dis", T_dis, "Nm");
+fprintf(' %-23s %13s %12.4f %6s\n', 'Momentum per orbit',   "h_orbit", h_orbit, "Nms");
+fprintf(' %-23s %13s %12.2f %6s\n', 'RW satur. in',         "N_orb", N_orb, "orbits");
 fprintf('\n');
-fprintf(' %-23s %13s %12.2f %6s\n', 'Min slew time',            "t_slew_min", t_slew_min, "s");
-fprintf(' %-23s %13s %12.4f %6s\n', 'Peak rate',                "-", rate_slew_max_A*(180/pi), "deg/s");
-fprintf(' %-23s %13s %12.4f %6s\n', 'Reduced torque',           "T_reduced", T_reduced, "Nm");
-fprintf(' %-23s %13s %12.1f %6s\n', 'Slew time',                "t_slew_red", t_slew_red, "s");
-fprintf(' %-23s %13s %12.2f %6s\n', 'Peak slew RW momentum',    "h_slew_max_B", h_slew_max_B, "Nms");
+fprintf(' %-23s %13s %12.2f %6s\n', 'Min slew time',        "t_slew_min", t_slew_min, "s");
+fprintf(' %-23s %13s %12.4f %6s\n', 'Peak rate',            "-", rate_slew_max_A*(180/pi), "deg/s");
+fprintf(' %-23s %13s %12.4f %6s\n', 'Reduced torque',       "T_reduced", T_reduced, "Nm");
+fprintf(' %-23s %13s %12.1f %6s\n', 'Slew time',            "t_slew_red", t_slew_red, "s");
+fprintf(' %-23s %13s %12.2f %6s\n', 'Peak slew RW momentum',"h_slew_max_B", h_slew_max_B, "Nms");
 fprintf('\n');
 fprintf('\n===========================================================\n');
 fprintf('  END OF ADCS SIZING\n');
