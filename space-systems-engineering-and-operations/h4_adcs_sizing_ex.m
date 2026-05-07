@@ -199,7 +199,7 @@ T_max       = T_rw_max * sqrt(3);
 h_rw_max    = 8.00;             % RW max momentum       [Nms]
 h_max       = h_rw_max * sqrt(3);
 
-rate_max    = 0.1 * (pi/180);   % Max angular rate      [rad/s] TODO
+rate_max    = h_max / (2*I_max);% Max angular rate      [rad/s] TODO
 theta_max   = 180 * (pi/180);   % Worst-case slew angle [rad] TODO
 
 % --- Orbital / environment parameters ------------------------------------
@@ -334,7 +334,7 @@ h_slew_max_B = I_max * rate_max;
 fprintf('\n  [Case B] Reduced torque to satisfy θ̇ ≤ %.1f°/s:\n', rate_max*(180/pi));
 fprintf(' T_reduced  = I_max · θ̇_max² / θ_slew = %.4f  Nm\n', T_reduced);
 fprintf(' t_slew     = 2 · θ̇_max · I_max / T   = %.1f  s\n', t_slew_red);
-fprintf(' h_slew_peak = I_max · θ̇_max           = %.2f  Nms\n\n', h_slew_max_B);
+fprintf(' h_slew_peak = I_max · θ̇_max          = %.2f  Nms\n\n', h_slew_max_B);
 
 %% ========================================================================
 %  4. MAGNETORQUER SIZING – SLEW MANEUVER
