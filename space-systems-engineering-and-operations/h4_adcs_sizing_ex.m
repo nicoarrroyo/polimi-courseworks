@@ -4,20 +4,18 @@ fprintf('  ADCS SIZING  -  SMOS\n');
 fprintf('===========================================================\n\n');
 
 %% 1. KNOWN PARAMETERS (Masses in kg, Dimensions in meters)
-% Proteus Bus (rectangular prism)
-m_bus           = 225.08+28;
-lx_bus          = 1.004;
-ly_bus          = 0.954;
-lz_bus          = 0.954;
-
 % Solar Panel Arrays
-% SMOS has two arrays, one on each side of the bus (+Y and -Y).
-% Each array is a thin rectangular plate (lz ~ 0, ly = length, lx = height).
 m_solar_total   = 49.92;                % Total mass of BOTH arrays [kg]
 m_solar         = m_solar_total / 2;    % Mass of one array [kg]
 lx_solar        = 1.5;                  % Panel height [m]
 ly_solar        = 4.0;                  % Array span (along Y) [m]
 lz_solar        = 0;                    % Panel Thickness (negligible) [m]
+
+% PROTEUS Bus (rectangular prism)
+m_bus           = 275-m_solar_total+28;
+lx_bus          = 1.004;
+ly_bus          = 0.954;
+lz_bus          = 0.954;
 
 % Y-offset of each array CoM from the satellite Z-axis:
 % Assume massless strut connecting solar panels to bus surface with width 
@@ -29,9 +27,11 @@ dy_solar        = (ly_bus + ly_solar)/2 + 0.5;
 m_arm           = 64;           % Mass of a single arm [kg]
 m_arms_total    = m_arm * 3;    % Total arms mass [kg]
 L_arm           = 3.4;          % Length of each arm [m]
+W_arm           = 0.4;          % Width of each arm (estimate) [m]
+t_arm           = 0;            % Thickness of each arm (simplification) [m]
 r_arm_start     = 1.3/2;        % Arm attachment radius (at hub surface) [m]
 
-% MIRAS Hub (solid cylinder, symmetry axis = X)
+% MIRAS Hub (hexagonal prism, assumed solid cylinder, symmetry axis = X)
 m_hub           = 355 - m_arms_total;
 hub_diam        = 1.3;          % Diameter of hub (hexagonal) [m]
 lr_hub          = hub_diam / 2;
@@ -71,9 +71,6 @@ I_hub_local = diag([ ...
 ]);
 
 % --- Solar Arrays (thin rectangular plates) ---
-% Treat each array as an independent thin rectangular plate.
-% Local inertia of ONE array about its own CoM (plate lies in YZ-plane, 
-% thickness along X is negligible):
 I_array_local = diag([ ...
     (m_solar/12) * (ly_solar^2 + lz_solar^2), ... % Ixx (width + height)
     (m_solar/12) * (lx_solar^2 + lz_solar^2), ... % Iyy (thickness + height)
@@ -81,34 +78,7 @@ I_array_local = diag([ ...
 ]);
 
 % --- MIRAS Arms (thin rods todo-check-assumption) --- %
-% Each arm is a thin rod lying in the XY-plane (0 thickness), starting at
-% r0 = hub_r from the Z-axis and extending radially to r0 + arm_L.
-%
-% The three arms are at phi = 0, 120, 240 deg.
-
 Ixx_single_arm = (m_arm / 3)*L_arm^2 + m_arm*r_arm_start^2;
-
-% Ixx and Iyy of one arm about satellite Z-axis:
-% For a rod at angle phi in the XY-plane, each mass element dm at radius r
-% has coordinates (r*cos(phi), r*sin(phi), 0).
-%   Izz_arm(phi) = integral r^2 * sin^2(phi) dm  =  sin^2(phi) * Ixx_single_arm
-%   Iyy_arm(phi) = integral r^2 * cos^2(phi) dm  =  cos^2(phi) * Ixx_single_arm
-% Summing over phi = 0, 120, 240 deg:
-%   sum(sin^2) = 0 + 3/4 + 3/4 = 3/2
-%   sum(cos^2) = 1 + 1/4 + 1/4 = 3/2
-% Therefore by symmetry: Ixx_total = Iyy_total = (3/2) * Izz_single_arm
-% NOTE: this numerical coincidence (Ixx=Iyy=1.5*Izz_single) is the same
-% value as the original code, but now derived correctly.
-%
-% Izz_total = sum of all three Izz_arm(phi):
-%   Each arm's Izz about satellite axis = Izz_single (independent of phi).
-%   Total: 3 * Izz_single_arm
-%
-% Z-axis inertia: arms lie flat in XY-plane, so Ixx/Iyy about the arm CoM
-% have no Z-extent contribution. The approach above already computes
-% inertia about the SATELLITE Z-axis directly (no local+PAT split needed
-% for the radial direction). We only need a Z-shift for the arm CoM
-% sitting at z_arms_com vs z_cg.
 
 dx_arms = x_arms_com - x_cg;
 
@@ -197,7 +167,7 @@ r_panel = x_solar_com;
 r_bus = x_bus_com;
 r_hub = x_hub_com;
 
-Q_panel = 1.1;
+Q_panel = 1.3;
 Q_bus = 1.3;
 Q_hub = 1.3;
 
@@ -225,9 +195,9 @@ q_hub   = 0.3*A_hub;
 q_refl  = (q_panel + q_bus + q_hub) / S;    % Reflectivity coefficient [-]
 
 T_rw_max    = 0.120;            % RW max torque         [Nm]
-T_max = T_rw_max * sqrt(3);
+T_max       = T_rw_max * sqrt(3);
 h_rw_max    = 8.00;             % RW max momentum       [Nms]
-h_max = h_rw_max * sqrt(3);
+h_max       = h_rw_max * sqrt(3);
 
 rate_max    = 0.1 * (pi/180);   % Max angular rate      [rad/s] TODO
 theta_max   = 180 * (pi/180);   % Worst-case slew angle [rad] TODO
@@ -262,7 +232,7 @@ fprintf('===========================================================\n\n');
 % Done by Preliminary Disturbances Evaluation
 
 % --- Gravity Gradient ---
-T_gg = 3*mu / (2*R_orb^3) * abs(I_max - I_min);
+T_gg = 3*mu / (2*R_orb^3) * abs(I_max - I_min) * sind(2*32.5);
 
 % --- Solar Radiation Pressure ---)
 T_srp = (F_sun/c_light) * S * (1+q_refl) * (csp_shift);
@@ -276,7 +246,7 @@ T_mag = D_res * B_N_max;
 % --- Aero drag ---
 rho = 1.25 * 10^-14;
 V = sqrt(mu / a);
-S_aero_arms = L_arm * sind(32.5) * 0.4 * 3;
+S_aero_arms = L_arm * sind(32.5) * W_arm * 3;
 S_aero_hub_lower_face = pi * (lr_hub)^2 * sind(32.5);
 S_aero_hub_body = lx_hub * hub_diam * cosd(32.5);
 S_aero_bus_body = lx_bus * ly_bus * cosd(32.5);
@@ -311,14 +281,15 @@ fprintf('===========================================================\n\n');
 % For a nadir-pointing spacecraft: T_gg is constant, T_SRP is cyclic.
 % Conservative factor of 2 is applied to T_gg.
 
-T_dis = 2 * (T_gg+T_srp+T_aero);  % Total constant disturbance torque [Nm]
+T_tot = abs(T_gg) + abs(T_srp) + abs(T_aero);
+T_dis = 2 * T_tot;  % Total constant disturbance torque [Nm]
 h_orbit = T_dis * T_orb;          % Momentum accumulated per orbit [Nms]
 
 % Number of orbits before RW saturation
 N_orb = h_max / h_orbit;
 
 fprintf('--- 3.1  Disturbance Momentum Accumulation ---\n');
-fprintf(' T_dis = 2 × T_gg = %.4e Nm\n', T_dis);
+fprintf(' T_dis = 2 × T_tot = %.4e Nm\n', T_dis);
 fprintf(' h_orbit = T_dis × T_orb = %.4f Nms\n', h_orbit);
 fprintf(' N_orb (before saturation) = h_max / h_orbit = %.2f orbits\n\n', N_orb);
 
