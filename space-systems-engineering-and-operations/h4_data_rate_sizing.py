@@ -20,7 +20,7 @@ st_housekeeping_packet = float_size; # advanced component so assume secondary ou
 st_bitrate = (st_attitude_packet + st_angular_rates_packet + st_housekeeping_packet) * protocol_overhead * st_update_rate;
 st_n = 2;
 st_bitrate_tot = st_bitrate * st_n;
-print(f"STAR TRACKER    : {int(st_bitrate)} bps");
+print(f"STAR TRACKER       : {int(st_bitrate)} bps");
 
 # ==== GYRO ==== #
 g_axes = 2; # how many axes per gyroscope
@@ -31,7 +31,7 @@ g_update_rate = 75;
 g_bitrate = g_update_rate * g_axes * float_size * protocol_overhead;
 g_n = 3;
 g_bitrate_tot = g_bitrate * g_n;
-print(f"GYRO            : {int(g_bitrate)} bps");
+print(f"GYRO               : {int(g_bitrate)} bps");
 
 #g_bitrate_lo = g_update_rate_lo * g_axes * float_size * protocol_overhead;
 #g_bitrate_hi = g_update_rate_hi * g_axes * float_size * protocol_overhead;
@@ -45,7 +45,7 @@ css_update_rate = 2; # TODO BOH
 css_bitrate = (int_size) * css_channels * css_update_rate;
 css_n = 8;
 css_bitrate_tot = css_bitrate * css_n;
-print(f"CSS             : {int(css_bitrate)} bps");
+print(f"CSS                : {int(css_bitrate)} bps");
 
 # ==== MAG ==== #
 mag_update_rate = 2;
@@ -54,7 +54,7 @@ mag_axes = 3;
 mag_bitrate = mag_axes * mag_update_rate * float_size * protocol_overhead;
 mag_n = 2;
 mag_bitrate_tot = mag_bitrate * mag_n;
-print(f"MAG             : {int(mag_bitrate)} bps");
+print(f"MAG                : {int(mag_bitrate)} bps");
 
 # ==== GPS ==== # TODO tutto inferred dalla cit. di topstar3000
 gps_axes = 3; # X, Y, Z for position and velocity
@@ -75,7 +75,7 @@ gps_bitrate = ((gps_position_packet + gps_velocity_packet + gps_time_packet) + \
                 (gps_raw_data_packet)) * protocol_overhead * gps_update_rate;
 gps_n = 1;
 gps_bitrate_tot = gps_bitrate * gps_n;
-print(f"GPS             : {int(gps_bitrate)} bps");
+print(f"GPS                : {int(gps_bitrate)} bps");
 
 #gps_bitrate_lo = ((gps_position_packet + gps_velocity_packet + gps_time_packet) + \
 #                (gps_signal_processing_packet)) * protocol_overhead * gps_update_rate;
@@ -96,7 +96,7 @@ rw_update_rate = 25;
 rw_bitrate = (rw_out_satur_flag + rw_out_speed + rw_in_command) * protocol_overhead * rw_update_rate
 rw_n = 4;
 rw_bitrate_tot = rw_bitrate * rw_n;
-print(f"RW              : {int(rw_bitrate)} bps");
+print(f"RW                 : {int(rw_bitrate)} bps");
 
 #rw_bitrate_lo = (rw_out_satur_flag + rw_out_speed + rw_in_command) * protocol_overhead * rw_update_rate_lo
 #rw_bitrate_lo = (rw_out_satur_flag + rw_out_speed + rw_in_command) * protocol_overhead * rw_update_rate_hi
@@ -110,7 +110,7 @@ mtq_update_rate = 3;
 mtq_bitrate = mtq_in_command * mtq_update_rate * protocol_overhead;
 mtq_n = 3;
 mtq_bitrate_tot = mtq_bitrate * mtq_n;
-print(f"MTQ             : {int(mtq_bitrate)} bps");
+print(f"MTQ                : {int(mtq_bitrate)} bps");
 
 # ==== THRUSTER ==== #
 thr_in_command = bool_size;
@@ -118,13 +118,13 @@ thr_in_command = bool_size;
 thr_bitrate = bool_size * protocol_overhead;
 thr_n = 4;
 thr_bitrate_tot = thr_bitrate * thr_n;
-print(f"THRUSTER        : {int(thr_bitrate)} bps");
+print(f"THRUSTER           : {int(thr_bitrate)} bps");
 
 print("--------------------------------")
 #tot_bitrate_lo = st_bitrate + g_bitrate_lo + css_bitrate + mag_bitrate + gps_bitrate_lo;
 #tot_bitrate_hi = st_bitrate + g_bitrate_hi + css_bitrate + mag_bitrate + gps_bitrate_hi;
 tot_bitrate = st_bitrate + g_bitrate + css_bitrate + mag_bitrate + gps_bitrate + rw_bitrate + mtq_bitrate + thr_bitrate;
-print(f"TOTAL PER ITEM  : {int(tot_bitrate)} bps");
+print(f"TOTAL PER ITEM     : {int(tot_bitrate)} bps");
 #print(f"TOTAL (LO)      : {tot_bitrate_lo} bps");
 #print(f"TOTAL (HI)      : {tot_bitrate_hi} bps");
 print("--------------------------------")
@@ -163,6 +163,5 @@ print(f"STAR ACQUISITION   : {int(sam_bitrate)} bps");
 print(f"NORMAL AUTONOMOUS  : {int(nam_bitrate)} bps");
 print(f"ORBIT CORRECTION 2 : {int(ocm2_bitrate)} bps");
 print(f"ORBIT CORRECTION 4 : {int(ocm4_bitrate)} bps");
-
 
 print("================================")
