@@ -6,127 +6,95 @@
 
 clc; clear; close all;
 
-%% =========================================================================
+%% ========================================================================
 %  SECTION 0: MISSION & ORBIT PARAMETERS
-%  =========================================================================
+%  ========================================================================
 
 R_E     = 6371;                 % Earth radius [km]
-h       = 765;                  % Altitude [km]
+tilt_E  = 23.44;                % Earth axial tilt [deg]
 mu      = 398600.4;             % Earth gravitational parameter [km^2 s^{-3}]
+
+h       = 765;                  % Altitude [km]
 a       = h + R_E;              % Semi-major axis
 e       = 0.0001;               % Eccentricity [-] (negligible)
 i       = 98.44;                % Inclination [deg]
+
 T_orb   = 2*pi * sqrt(a^3/mu);  % Orbit period [sec]
+T_orb_m = T_orb / 60;           % Orbital period [min]
+T_orb_h = T_orb_m / 60;         % Orbital period [h]
 
-T_orb_min = T_orb / 60;         % Orbital period [min]
-T_orb_h   = T_orb_min / 60;     % Orbital period [h]
+beta    = 180 - tilt_E - i;
 
-beta_deg = 0;                   % Sun-orbit plane angle [deg] — set worst case
-beta_max_deg = asind(R_E / a);  % Max beta for eclipse to occur
+% Nominal orbit case is not considered for sizing
 
-if abs(beta_deg) >= beta_max_deg
-    F_ecl = 0;
-else
-    arg = sqrt(1 - (R_E/a)^2) / cosd(beta_deg);
-    F_ecl = acosd(arg) / 180;   % Eclipse fraction of orbit
-end
+% Worst eclipse case (around winter)
+T_ecl   = (T_orb / pi) * acos(sqrt(a^2 - R_E^2) / (a * cosd(beta)));
 
-T_ecl_min = F_ecl * T_orb_min; % Eclipse duration [h]
-T_sun_min  = T_orb_min - T_ecl_h;
+T_sun   = T_orb - T_ecl;
 
-% Eclipsed orbit case (during winter eclipse period)
-T_ecl_win   = 20*60;                % Time in eclipse per orbit [sec] TODO-calculate
-T_sun_win   = T_orb - T_ecl_win;    % Time in sunlight per orbit [sec]
+fprintf('======== ORBIT PARAMETERS ========\n');
+fprintf(' Semi-Major Axis:      %.2f km\n', a);
+fprintf(' Orbital period:       %.2f minutes\n', T_orb/60);
+fprintf(' Winter sunlit time:   %.2f minutes\n', T_sun/60);
+fprintf(' Winter eclipse time:  %.2f minutes\n\n', T_ecl/60);
 
-% Nominal orbit case
-T_ecl_nom   = 0;
-T_sun_nom   = T_orb;
-
-fprintf('=== ORBIT PARAMETERS ===\n');
-fprintf(' Semi-Major Axis:      %g km (SSO, LTAN 06:00)\n', a);
-fprintf(' Orbital period:       %.2f seconds\n', T_orb);
-fprintf(' Winter sunlit time:   %.2f minutes\n', T_sun_win/60);
-fprintf(' Winter eclipse time:  %.2f minutes\n', T_ecl_win/60);
-fprintf(' Nominal sunlit time:  %.2f minutes\n', T_sun_nom/60);
-fprintf(' Nominal eclipse time: %.2f minutes\n\n', T_ecl_nom/60);
-
-%% =========================================================================
+%% ========================================================================
 %  SECTION 1: POWER BUDGET (from Table 2)
-%  =========================================================================
-% Modes:
-% Safe-Hold, Star Acquisition, Normal Autonomous, Orbit Correction 2/4
-% All values in [W], including 20% system margin
+%  ========================================================================
+% Safe Hold, Star Acquisition, Normal Autonomous, Orbit Correction 2/4
 
-% Total required power in Safe-Hold Mode [W]
-P_shm       = 13.82*1.2;
+% Safe-Hold Mode [W]
+P_shm       = 110*1.2;
 
-% Total required power in Star Acquisition Mode [W]
-P_sam       = 144.82*1.2;
+% Star Acquisition Mode [W]
+P_sam       = 248*1.2;
 
-% Total required power in Normal Autonomous Mode nominally [W]
-P_nam_nom   = 143.70*1.2;
+% Normal Autonomous Mode nominally [W]
+P_nam_sun   = 665*1.2;
 
-% Total required power in Normal Autonomous Mode during eclipse [W]
-P_nam_ecl   = P_nam_nom*1.5*1.2; % TODO
+% Normal Autonomous Mode during eclipse [W]
+P_nam_ecl   = 765*1.2; % TODO heaters at 160 W instead of 80 W
 
-% Total required power in Orbit COrrection Mode 2 [W]
-P_ocm2      = 162.70*1.2;
+% Orbit COrrection Mode 2 [W]
+P_ocm2      = 646.4*1.2;
 
-% Total required power in Orbit Correction Mode 4 [W]
-P_ocm4      = 181.70*1.2;
+% Orbit Correction Mode 4 [W]
+P_ocm4      = 686.3*1.2;
 
-fprintf('=== POWER BUDGET (incl. 20%% margin) ===\n');
-fprintf(' Science-Sunlight: %g W\n', P_science_sun);
-fprintf(' Eclipse:          %g W\n', P_eclipse);
-fprintf(' Telecom:          %g W\n', P_telecom);
-fprintf(' Safe Mode:        %g W\n\n', P_safe);
+fprintf('======== POWER BUDGET (incl. 20%% margin) ========\n');
+fprintf(' SHM:                  %g W\n', P_shm);
+fprintf(' SAM:                  %g W\n', P_sam);
+fprintf(' NAM (Sun.):           %g W\n', P_nam_sun);
+fprintf(' NAM (Ecl.):           %g W\n', P_nam_ecl);
+fprintf(' OCM2:                 %g W\n', P_ocm2);
+fprintf(' OCM4:                 %g W\n\n', P_ocm4);
 
 %% =========================================================================
 %  SECTION 2: EPS CONFIGURATION & EFFICIENCIES TODO
 %  =========================================================================
 
-control_type = 'PPT';   % Power conditioning type: 'PPT' or 'DET'
+% Line efficiencies DET
+X_e = 0.65;
+X_s = 0.85;
 
-% Line efficiencies (Table 3)
-eff_PPT_ecl = 0.60;  eff_PPT_sun = 0.80;
-eff_DET_ecl = 0.65;  eff_DET_sun = 0.85;
+fprintf('======== EPS CONFIGURATION ========\n');
+fprintf(' Eclipse efficiency Xe:    %.2f\n', X_e);
+fprintf(' Sunlight efficiency Xs:   %.2f\n\n', X_s);
 
-switch upper(control_type)
-    case 'PPT'
-        X_e = eff_PPT_ecl;
-        X_s = eff_PPT_sun;
-    case 'DET'
-        X_e = eff_DET_ecl;
-        X_s = eff_DET_sun;
-    otherwise
-        error('Unknown control type: %s. Use ''PPT'' or ''DET''.', control_type);
-end
-
-fprintf('=== EPS CONFIGURATION ===\n');
-fprintf(' Control type:         %s\n', control_type);
-fprintf(' Eclipse efficiency Xe: %.2f\n', X_e);
-fprintf(' Sunlight efficiency Xs: %.2f\n\n', X_s);
-
-%% =========================================================================
+%% ========================================================================
 %  SECTION 3: SOLAR ARRAY SIZING
-%  =========================================================================
+%  ========================================================================
 
-fprintf('=== SOLAR ARRAY SIZING ===\n');
+fprintf('======== SOLAR ARRAY SIZING ========\n');
 
-% --- 3.1  Required power from solar arrays at EoL (energy balance, Eq. 1) ---
-%
-%         (Pe * Te / Xe)  +  (Ps * Ts / Xs)
-%  Psa = ----------------------------------------
-%                        Ts
+P_sa = ((P_nam_ecl * T_ecl / X_e) + (P_nam_sun * T_sun / X_s)) ...
+       / T_sun;
 
-P_sa = ( (P_eclipse * T_ecl_h / X_e) + (P_science_sun * T_sun_min / X_s) ) ...
-       / T_sun_min;
-
-fprintf('  Required solar array power at EoL:\n');
-fprintf('    Psa = (Pe*Te/Xe + Ps*Ts/Xs) / Ts\n');
-fprintf('        = (%.0f*%.2f/%.2f + %.0f*%.2f/%.2f) / %.2f\n', ...
-    P_eclipse, T_ecl_h, X_e, P_science_sun, T_sun_min, X_s, T_sun_min);
-fprintf('        = %.1f W\n\n', P_sa);
+fprintf(' Required solar array power at EoL:\n');
+fprintf('   Psa = (Pe*Te/Xe + Ps*Ts/Xs) / Ts\n');
+fprintf('       = (%.0f*%.2f/%.2f + %.0f*%.2f/%.2f) / %.2f\n', ...
+    P_nam_ecl, T_ecl, X_e, P_nam_sun, T_sun, X_s, T_sun);
+fprintf('       = %.1f W\n\n', P_sa);
 
 % --- 3.2  Specific power at BoL (Eq. 2) ---
 %
@@ -140,7 +108,7 @@ theta_rad   = deg2rad(SAA_deg);
 
 P_bol_spec = P0 * epsilon * Id * cos(theta_rad);  % [W m^{-2}]
 
-fprintf('  Specific power at BoL (Eq. 2):\n');
+fprintf(' Specific power at BoL (Eq. 2):\n');
 fprintf('    P0 = %g W/m²,  epsilon = %.2f,  Id = %.2f,  SAA = %g deg\n', ...
     P0, epsilon, Id, SAA_deg);
 fprintf('    Pbol = P0 * eps * Id * cos(SAA) = %.1f W/m²\n\n', P_bol_spec);
@@ -154,14 +122,14 @@ mission_yrs  = 12;      % Mission duration [years]
 
 P_eol_spec = P_bol_spec * (1 - dpy)^mission_yrs;  % [W m^{-2}]
 
-fprintf('  Specific power at EoL (Eq. 3):\n');
+fprintf(' Specific power at EoL (Eq. 3):\n');
 fprintf('    dpy = %.2f,  mission duration = %g years\n', dpy, mission_yrs);
 fprintf('    Peol = Pbol * (1 - dpy)^n = %.1f W/m²\n\n', P_eol_spec);
 
 % --- 3.4  Required solar array area (Eq. 4) ---
 A_sa = P_sa / P_eol_spec;   % [m^2]
 
-fprintf('  Required solar array area:\n');
+fprintf(' Required solar array area:\n');
 fprintf('    Asa = Psa / Peol = %.1f / %.1f = %.2f m²\n\n', ...
     P_sa, P_eol_spec, A_sa);
 
@@ -184,7 +152,7 @@ N_parallel = ceil(N_cells_min / N_series) + 1;
 N_cells_real = N_parallel * N_series;
 A_sa_real    = A_cell * N_cells_real;   % [m^2]
 
-fprintf('  Cell configuration (CESI CTJ30: A=%.2f cm², Vcell=%.2f V):\n', ...
+fprintf(' Cell configuration (CESI CTJ30: A=%.2f cm², Vcell=%.2f V):\n', ...
     A_cell*1e4, V_cell);
 fprintf('    Minimum cells required:  %d\n', N_cells_min);
 fprintf('    Cells in series:         %d  (Vbus/Vcell = %g/%.2f)\n', ...
@@ -197,15 +165,19 @@ fprintf('    Effective array area:    %.2f m²\n\n', A_sa_real);
 P_sa_bol = A_sa_real * P0 * epsilon * Id;           % BoL power [W]
 P_sa_eol = P_sa_bol * (1 - dpy)^mission_yrs;       % EoL power [W]
 
-fprintf('  Power from sized solar array:\n');
+fprintf(' Power from sized solar array:\n');
 fprintf('    BoL power (perp. to Sun): %.0f W\n', P_sa_bol);
 fprintf('    EoL power:                %.0f W\n\n', P_sa_eol);
 
-%% =========================================================================
+%% ========================================================================
 %  SECTION 4: BATTERY SIZING
-%  =========================================================================
+%  ========================================================================
+V_min = 24;
+V_max = 37;
+V_cell_min = 3.3;
+V_cell_max = 4.1;
 
-fprintf('=== BATTERY SIZING ===\n');
+fprintf('======== BATTERY SIZING ========\n');
 
 % --- 4.1  Required energy capacity (Eq. 12) ---
 %
@@ -214,8 +186,8 @@ fprintf('=== BATTERY SIZING ===\n');
 %           N * eta * DoD
 
 N_packs = 2;    % Number of battery packs [-]
-eta_bat  = 0.80; % Battery EoL efficiency [-]
-DoD      = 0.30; % Depth of discharge [-]
+eta_bat = 0.80; % Battery EoL efficiency [-]
+DoD     = 0.30; % Depth of discharge [-]
 
 E_batt = (P_eclipse * T_ecl_h / X_e) / (N_packs * eta_bat * DoD);  % [Wh]
 
@@ -260,9 +232,9 @@ fprintf('  Total battery (all %d packs combined):\n', N_packs);
 fprintf('    Total energy:   %.0f Wh\n', N_packs * E_batt_real);
 fprintf('    Total charge:   %.2f Ah\n\n', N_packs * C_batt);
 
-%% =========================================================================
+%% ========================================================================
 %  SECTION 5: SUMMARY TABLE
-%  =========================================================================
+%  ========================================================================
 
 fprintf('=================================================================\n');
 fprintf('                        EPS SIZING SUMMARY\n');
