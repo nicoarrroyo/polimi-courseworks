@@ -155,16 +155,16 @@ fprintf('           = %.2f m^2\n\n', A_sa)
 
 fprintf(' Cell configuration (silicon: A = %.2f cm², Vcell = %.2f V):\n', ...
     A_cell_sa*1e4, V_cell_sa);
-fprintf('   Minimum cells required:  %d\n', N_cells_min_sa);
-fprintf('   Cells in series:         %d  (Vbus/Vcell = %g/%.2f)\n', ...
+fprintf('   Minimum cells required: %d\n', N_cells_min_sa);
+fprintf('   Cells in series:        %d  (Vbus/Vcell = %g/%.2f)\n', ...
     N_series_sa, V_bus, V_cell_sa);
-fprintf('   Parallel strings:        %d  (incl. 1 redundant string)\n', N_parallel_sa);
-fprintf('   Actual total cells:      %d\n', N_cells_real_sa);
-fprintf('   Effective array area:    %.2f m²\n\n', A_sa_real);
+fprintf('   Strings in parallel:    %d  (incl. 1 redundant string)\n', N_parallel_sa);
+fprintf('   Actual total cells:     %d\n', N_cells_real_sa);
+fprintf('   Effective array area:   %.2f m²\n\n', A_sa_real);
 
-fprintf(' Power from sized solar array:\n');
-fprintf('   BoL power (perp. to Sun): %.0f W\n', P_sa_bol);
-fprintf('   EoL power:                %.0f W\n\n', P_sa_eol);
+fprintf(' Power from sized solar array (perp. to Sun):\n');
+fprintf('   BoL power:              %.0f W\n', P_sa_bol);
+fprintf('   EoL power:              %.0f W\n\n', P_sa_eol);
 
 %% ========================================================================
 %  SECTION 4: BATTERY SIZING
@@ -184,50 +184,43 @@ fprintf('======== BATTERY SIZING ========\n');
 
 % --- 4.1  Required energy capacity ---
 % shall we use a lithium thionyl chloride cell? page 13 of slides
-N_packs         = 1;    % N. battery packs      [-]
-eta_bat         = 0.80; % Batt. EoL efficiency  [-] TODO
-DoD             = 0.30; % Depth of discharge    [-] TODO
+ba.N_packs  = 1;    % N. battery packs      [-]
+ba.eta      = 0.80; % Batt. EoL efficiency  [-] TODO
+ba.DoD      = 0.30; % Depth of discharge    [-] TODO
 
-E_batt = (P_nam_ecl * T_ecl / X_ecl) / (N_packs * eta_bat * DoD) / 3600; % [Wh]
-
-fprintf(' Required battery energy capacity per pack:\n');
-fprintf('   Ebatt   = (Pe*Te/Xe) / (N*eta*DoD) = %.0f Wh\n', E_batt);
-fprintf('           = (%.1f*%.1f/%.1f) / (%.0f*%.2f*%.2f)\n', ...
-    P_nam_ecl, T_ecl, X_ecl, N_packs, eta_bat, DoD);
-fprintf('           = %.0f Wh\n\n', E_batt);
+ba.E        = (P_nam_ecl * T_ecl / X_ecl) / (ba.N_packs * ba.eta * ba.DoD) / 3600; % [Wh]
 
 % --- 4.2  Cell sizing (reference Li-Ion cell) ---
-C_cell_batt     = 26.0; % Cell capacity         [Ah] 3 cells/package, 9 packages
-V_cell_batt     = 3.3;  % Cell voltage          [V] up to 4.1
-pack_batt       = 0.80; % Packing efficiency    [-]
+ba.cell_C       = 26.0; % Cell capacity         [Ah] 3 cells/package, 9 packages
+ba.cell_V       = 3.3;  % Cell voltage          [V] up to 4.1
+ba.cell_mu      = 0.80; % Packing efficiency    [-]
 
 % Cell packages in series (to reach a reasonable bus voltage)
-N_series_batt   = ceil(V_bus / V_cell_batt);
+ba.package_N    = ceil(V_bus / ba.cell_V);
 
 % Cells in parallel per package (to reach battery capacity)
-C_package       = pack_batt * C_cell_batt;
-E_package       = C_package * N_series_batt * V_cell_batt;
-N_parallel_batt = ceil(E_batt / E_package);
+ba.cell_C_real  = ba.cell_mu * ba.cell_C;
+ba.package_E    = ba.cell_C_real * ba.package_N * ba.cell_V;
+ba.cell_N       = ceil(ba.E / ba.package_E);
 
-% Total cell count and actual energy/charge
-N_cells_batt    = N_parallel_batt * N_series_batt;
-E_batt_real     = N_parallel_batt * E_package;                  % [Wh] per pack
-C_batt          = N_parallel_batt * pack_batt * C_cell_batt;    % [Ah] per pack
+% Total cell count and actual energy and charge
+ba.cell_Ntot    = ba.cell_N * ba.package_N;
+ba.E_real       = ba.cell_N * ba.package_E;             % [Wh] per pack
+ba.C_real       = ba.cell_N * ba.cell_mu * ba.cell_C;   % [Ah] per pack
+
+fprintf(' Required battery energy capacity per pack:\n');
+fprintf('   Ebatt   = (Pe*Te/Xe) / (N*eta*DoD) = %.0f Wh\n', ba.E);
+fprintf('           = (%.1f*%.1f/%.1f) / (%.0f*%.2f*%.2f)\n', ...
+    P_nam_ecl, T_ecl, X_ecl, ba.N_packs, ba.eta, ba.DoD);
+fprintf('           = %.0f Wh\n\n', ba.E);
 
 fprintf(' Cell configuration (Li-Ion: %.1f Ah, %.1f V; packing eff. %.2f):\n', ...
-    C_cell_batt, V_cell_batt, pack_batt);
-fprintf('   Packages in series:          %d  (Vbus/Vcell = %g/%.1f)\n', ...
-    N_series_batt, V_bus, V_cell_batt);
-fprintf('   Package capacity:            %.1f Ah\n', C_package);
-fprintf('   Energy per package:          %.2f Wh\n', E_package);
-fprintf('   Total cells per pack:        %d\n', N_parallel_batt); %TODO 1 FOR REDUNDANCY?
-fprintf('   Energy capacity (per pack):  %.0f Wh\n', E_batt_real);
-fprintf('   Electric charge (per pack):  %.2f Ah\n\n', C_batt);
-
-% Total across all packs
-fprintf(' Total battery (all %d packs combined):\n', N_packs);
-fprintf('   Total energy:   %.0f Wh\n', N_packs * E_batt_real);
-fprintf('   Total charge:   %.2f Ah\n\n', N_packs * C_batt);
+    ba.cell_C, ba.cell_V, ba.cell_mu);
+fprintf('   Packages in series:     %d  (Vbus/Vcell = %g/%.1f)\n', ...
+    ba.package_N, V_bus, ba.cell_V);
+fprintf('   Cells per package:      %d\n', ba.cell_N); %TODO 1 FOR REDUNDANCY?
+fprintf('   Energy capacity:        %.0f Wh\n', ba.E_real);
+fprintf('   Electric charge:        %.2f Ah\n\n', ba.C_real);
 
 %% ========================================================================
 %  SECTION 5: SUMMARY TABLE
@@ -236,22 +229,22 @@ fprintf('=============================================================\n');
 fprintf('                    EPS SIZING SUMMARY\n');
 fprintf('=============================================================\n');
 fprintf(' SOLAR ARRAYS\n');
-fprintf('   Required power at EoL       %8.1f  W\n',   P_sa);
-fprintf('   Spec. power at BoL          %8.1f  W/m²\n', P_bol_spec);
-fprintf('   Spec. power at EoL          %8.1f  W/m²\n', P_eol_spec);
-fprintf('   Required area               %8.2f  m²\n',  A_sa);
-fprintf('   Cells in series / parallel  %8d / %d\n',   N_series_sa, N_parallel_sa);
-fprintf('   Total cell count            %8d\n',        N_cells_real_sa);
-fprintf('   Effective area              %8.2f  m²\n',  A_sa_real);
-fprintf('   BoL power (perp.)           %8.0f  W\n',   P_sa_bol);
-fprintf('   EoL power                   %8.0f  W\n',   P_sa_eol);
+fprintf('   Required power at EoL   %.1f  W\n',     P_sa);
+fprintf('   Spec. power at BoL      %.1f  W/m²\n',  P_bol_spec);
+fprintf('   Spec. power at EoL      %.1f  W/m²\n',  P_eol_spec);
+fprintf('   Required area           %.2f  m²\n',    A_sa);
+fprintf('   Cells in series         %.0f\n',        N_series_sa);
+fprintf('   Strings in parallel     %.0f\n',        N_parallel_sa);
+fprintf('   Total cell count        %.0f\n',        N_cells_real_sa);
+fprintf('   Effective area          %.2f  m²\n',    A_sa_real);
+fprintf('   BoL power (perp.)       %.0f  W\n',     P_sa_bol);
+fprintf('   EoL power               %.0f  W\n',     P_sa_eol);
 fprintf('-------------------------------------------------------------\n');
-fprintf(' BATTERIES  (per pack, N = %d packs)\n', N_packs);
-fprintf('   Required energy per pack    %8.0f  Wh\n',  E_batt);
-fprintf('   Cells in series / parallel  %8d / %d\n',   N_series_batt, N_parallel_batt);
-fprintf('   Total cells per pack        %8d\n',        N_cells_batt);
-fprintf('   Actual energy per pack      %8.0f  Wh\n',  E_batt_real);
-fprintf('   Electric charge per pack    %8.2f  Ah\n',  C_batt);
-fprintf('   Total system energy         %8.0f  Wh\n',  N_packs * E_batt_real);
-fprintf('   Total system charge         %8.2f  Ah\n',  N_packs * C_batt);
+fprintf(' BATTERIES\n');
+fprintf('   Required total energy   %.0f  Wh\n',    ba.E);
+fprintf('   Cells in parallel       %.0f\n',        ba.cell_N);
+fprintf('   Packages in series      %.0f\n',        ba.package_N);
+fprintf('   Total cells             %.0f\n',        ba.cell_Ntot);
+fprintf('   Actual total energy     %.f  Wh\n',     ba.E_real);
+fprintf('   Total electric charge   %.2f  Ah\n',    ba.C_real);
 fprintf('=============================================================\n');
