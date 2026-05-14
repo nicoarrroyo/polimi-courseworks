@@ -61,7 +61,7 @@ P_ocm2      = 646.4*1.2;
 % Orbit Correction Mode 4 [W]
 P_ocm4      = 686.3*1.2;
 
-fprintf('======== POWER BUDGET (incl. 20%% margin) ========\n');
+fprintf('======== POWER BUDGET (w/ 20%% margin) ========\n');
 fprintf(' SHM:                  %.1f W\n', P_shm);
 fprintf(' SAM:                  %.1f W\n', P_sam);
 fprintf(' NAM (Sun.):           %.1f W\n', P_nam_sun);
@@ -70,7 +70,7 @@ fprintf(' OCM2:                 %.1f W\n', P_ocm2);
 fprintf(' OCM4:                 %.1f W\n\n', P_ocm4);
 
 %% =========================================================================
-%  SECTION 2: EPS CONFIGURATION & EFFICIENCIES TODO
+%  SECTION 2: EPS CONFIGURATION & EFFICIENCIES
 %  =========================================================================
 
 % Unregulated bus voltages min and max [V]
@@ -100,8 +100,8 @@ P_sa = ((P_nam_ecl * T_ecl / X_ecl) + (P_nam_sun * T_sun / X_sun)) ...
 P0          = 1365;             % Solar const. at Earth         [W m^{-2}]
 % epsilon 0.25 https://www.nlr.gov/pv/cell-efficiency
 epsilon     = 0.15;             % Silicon cell efficiency       [-]
-Id          = 0.70;             % Inherent degradation factor   [-]
-SAA_rad     = deg2rad(2);       % Sun Aspect Angle              [rad]
+Id          = 0.80;             % Inherent degradation factor   [-]
+SAA_rad     = deg2rad(90-beta); % Sun Aspect Angle              [rad]
 
 P_bol_spec = P0 * epsilon * Id * cos(SAA_rad); % Specific BoL power [W m^{-2}]
 
@@ -118,27 +118,9 @@ A_sa            = P_sa / P_eol_spec;    % Required solar array area         [m^2
 A_cell_sa       = 8*4e-4;       % Cell area                 [m^2] https://connectivity.esa.int/archives/projects/thin-film-solar-cell-demonstration-module
 V_cell_sa       = 0.55;         % Cell max-power voltage    [V] https://ocw.tudelft.nl/wp-content/uploads/solar_energy_section_15_1-15_3.pdf, https://ntrs.nasa.gov/citations/19820061407, https://global.sharp/solar/en/space-qualified/pdf/datasheet_Si-CIC.pdf
 
-% --- 3.5.1 Solar array voltage ---
-% Voltage penalty due to temperature
-temp_deg_sa     = -2.2e-3;      % Cell temp. deg. rate      [VC^{-1}]
-temp_op_sa      = 90;           % Cell operating temp.      [deg C] TODO-JUSTIFY
-temp_test_sa    = 28;           % Cell tested temp.         [deg C]
-temp_diff_sa    = temp_op_sa - temp_test_sa;
-penalty_temp    = temp_deg_sa*temp_diff_sa; % Voltage drop per cell due to temperature
-penalty_ratio_temp = penalty_temp / V_cell_sa;
-
-% Voltage penalty due to component losses
-penalty_diodes  = 0;
-penalty_components = penalty_diodes;
-
-V_sa            = V_bus - (...
-    penalty_temp + penalty_components + ...
-    + 2);           % SA voltage                [V] TODO-justify
-V_sa = 55;
-
 % Minimum total cell and string count
 N_cells_min_sa  = ceil(A_sa / A_cell_sa);   % Min. total N. cells
-N_series_sa     = ceil(V_sa / V_cell_sa);   % N. series cells to match V
+N_series_sa     = ceil(V_bus / V_cell_sa);   % N. series cells to match V
 N_parallel_sa   = ceil(N_cells_min_sa / N_series_sa) + 1; % N. parallel strings (1 redundant)
 
 % Actual total cell count and array area
@@ -223,32 +205,23 @@ pack_batt       = 0.80; % Packing efficiency    [-]
 N_series_batt   = ceil(V_bus / V_cell_batt);
 
 % Cells in parallel per package (to match battery capacity)
-E_cell_batt     = C_cell_batt * V_cell_batt;
-N_parallel_batt = ceil(E_batt / E_cell_batt);
-
-% Cells in series per string (to match bus voltage)
-N_series_b      = ceil(V_bus / V_cell_batt);
-
-% Capacity and energy of a single series string
-C_string        = pack_batt * C_cell_batt;                % [Ah]
-E_string        = C_string * (V_cell_batt * N_series_b);  % [Wh]
-
-% Number of parallel strings (+ 1 redundant)
-N_parallel_b    = ceil(E_batt / E_string) + 1;
+C_package       = pack_batt * C_cell_batt;
+E_package       = C_package * N_series_batt * V_cell_batt;
+N_parallel_batt = ceil(E_batt / E_package);
 
 % Total cell count and actual energy/charge
-N_cells_b       = N_parallel_b * N_series_b;
-E_batt_real     = N_parallel_b * E_string;                  % [Wh] per pack
-C_batt          = N_parallel_b * pack_batt * C_cell_batt;   % [Ah] per pack
+N_cells_batt    = N_parallel_batt * N_series_batt;
+E_batt_real     = N_parallel_batt * E_package;                  % [Wh] per pack
+C_batt          = N_parallel_batt * pack_batt * C_cell_batt;    % [Ah] per pack
 
 fprintf(' Cell configuration (Li-Ion: %.1f Ah, %.1f V; packing eff. %.2f):\n', ...
     C_cell_batt, V_cell_batt, pack_batt);
 fprintf('   Cells in series:             %d  (Vbus/Vcell = %g/%.1f)\n', ...
-    N_series_b, V_bus, V_cell_batt);
-fprintf('   String capacity:             %.1f Ah\n', C_string);
-fprintf('   Energy per string:           %.2f Wh\n', E_string);
-fprintf('   Parallel strings:            %d  (incl. 1 redundant string)\n', N_parallel_b);
-fprintf('   Total cells per pack:        %d\n', N_cells_b);
+    N_series_batt, V_bus, V_cell_batt);
+fprintf('   Package capacity:            %.1f Ah\n', E_package/N_series_batt);
+fprintf('   Energy per string:           %.2f Wh\n', E_package);
+fprintf('   Parallel strings:            %d  (incl. 1 redundant string)\n', N_parallel_batt);
+fprintf('   Total cells per pack:        %d\n', N_series_batt);
 fprintf('   Energy capacity (per pack):  %.0f Wh\n', E_batt_real);
 fprintf('   Electric charge (per pack):  %.2f Ah\n\n', C_batt);
 
@@ -276,8 +249,8 @@ fprintf('   EoL power                   %8.0f  W\n',   P_sa_eol);
 fprintf('-------------------------------------------------------------\n');
 fprintf(' BATTERIES  (per pack, N = %d packs)\n', N_packs);
 fprintf('   Required energy per pack    %8.0f  Wh\n',  E_batt);
-fprintf('   Cells in series / parallel  %8d / %d\n',   N_series_b, N_parallel_b);
-fprintf('   Total cells per pack        %8d\n',        N_cells_b);
+fprintf('   Cells in series / parallel  %8d / %d\n',   N_series_batt, N_parallel_batt);
+fprintf('   Total cells per pack        %8d\n',        N_cells_batt);
 fprintf('   Actual energy per pack      %8.0f  Wh\n',  E_batt_real);
 fprintf('   Electric charge per pack    %8.2f  Ah\n',  C_batt);
 fprintf('   Total system energy         %8.0f  Wh\n',  N_packs * E_batt_real);
