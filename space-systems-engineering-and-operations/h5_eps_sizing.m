@@ -204,7 +204,7 @@ pack_batt       = 0.80; % Packing efficiency    [-]
 % Cell packages in series (to reach a reasonable bus voltage)
 N_series_batt   = ceil(V_bus / V_cell_batt);
 
-% Cells in parallel per package (to match battery capacity)
+% Cells in parallel per package (to reach battery capacity)
 C_package       = pack_batt * C_cell_batt;
 E_package       = C_package * N_series_batt * V_cell_batt;
 N_parallel_batt = ceil(E_batt / E_package);
@@ -216,12 +216,11 @@ C_batt          = N_parallel_batt * pack_batt * C_cell_batt;    % [Ah] per pack
 
 fprintf(' Cell configuration (Li-Ion: %.1f Ah, %.1f V; packing eff. %.2f):\n', ...
     C_cell_batt, V_cell_batt, pack_batt);
-fprintf('   Cells in series:             %d  (Vbus/Vcell = %g/%.1f)\n', ...
+fprintf('   Packages in series:          %d  (Vbus/Vcell = %g/%.1f)\n', ...
     N_series_batt, V_bus, V_cell_batt);
-fprintf('   Package capacity:            %.1f Ah\n', E_package/N_series_batt);
-fprintf('   Energy per string:           %.2f Wh\n', E_package);
-fprintf('   Parallel strings:            %d  (incl. 1 redundant string)\n', N_parallel_batt);
-fprintf('   Total cells per pack:        %d\n', N_series_batt);
+fprintf('   Package capacity:            %.1f Ah\n', C_package);
+fprintf('   Energy per package:          %.2f Wh\n', E_package);
+fprintf('   Total cells per pack:        %d\n', N_parallel_batt); %TODO 1 FOR REDUNDANCY?
 fprintf('   Energy capacity (per pack):  %.0f Wh\n', E_batt_real);
 fprintf('   Electric charge (per pack):  %.2f Ah\n\n', C_batt);
 
