@@ -117,10 +117,18 @@ sa.A            = sa.P / sa.P_eol_spec;
 sa.cell_A       = 8*4e-4;           % Cell area                     [m^2] https://connectivity.esa.int/archives/projects/thin-film-solar-cell-demonstration-module
 sa.cell_V       = 0.49;             % Cell max-power voltage        [V] https://ocw.tudelft.nl/wp-content/uploads/solar_energy_section_15_1-15_3.pdf, https://ntrs.nasa.gov/citations/19820061407, https://global.sharp/solar/en/space-qualified/pdf/datasheet_Si-CIC.pdf
 
+temp_deg        = 2.2e-3;           % Voltage drop rate from temp.  [V/deg C]
+temp_op         = 75;               % Operating temperature         [deg C]
+temp_test       = 28;               % Temperature at cell test      [deg C]
+temp_diff       = temp_op-temp_test;
+temp_V_drop     = temp_deg*temp_diff;
+
+sa.cell_V_real  = sa.cell_V - temp_V_drop;
+
 % Minimum total cell and string count
-sa.cell_Nmin    = ceil(sa.A / sa.cell_A);   % Min. total N. cells
-sa.cell_N       = ceil(V_bus / sa.cell_V);  % N. series cells to match V
-sa.strings_N    = ceil(sa.cell_Nmin / sa.cell_N) + 1; % N. parallel strings (1 redundant)
+sa.cell_Nmin    = ceil(sa.A / sa.cell_A);               % Min. total N. cells
+sa.cell_N       = ceil(V_bus / sa.cell_V_real);         % N. series cells to match V
+sa.strings_N    = ceil(sa.cell_Nmin / sa.cell_N) + 1;   % N. parallel strings (1 redundant)
 
 % Actual total cell count and array area
 sa.cell_N_real  = sa.strings_N * sa.cell_N;     % Real total N. cells
@@ -153,10 +161,10 @@ fprintf('           = %.1f / %.1f\n', sa.P, sa.P_eol_spec);
 fprintf('           = %.2f m^2\n\n', sa.A)
 
 fprintf(' Cell configuration (silicon: A = %.2f cm², Vcell = %.2f V):\n', ...
-    sa.cell_A*1e4, sa.cell_V);
+    sa.cell_A*1e4, sa.cell_V_real);
 fprintf('   Minimum cells required: %.0f\n', sa.cell_Nmin);
 fprintf('   Cells in series:        %.0f  (Vbus/Vcell = %g/%.2f)\n', ...
-    sa.cell_N, V_bus, sa.cell_V);
+    sa.cell_N, V_bus, sa.cell_V_real);
 fprintf('   Strings in parallel:    %.0f  (incl. 1 redundant string)\n', sa.strings_N);
 fprintf('   Actual total cells:     %.0f\n', sa.cell_N_real);
 fprintf('   Effective array area:   %.2f m²\n\n', sa.A_real);
@@ -182,10 +190,9 @@ V_cell_max = 4.1;
 fprintf('======== BATTERY SIZING ========\n');
 
 % --- 4.1  Required energy capacity ---
-% shall we use a lithium thionyl chloride cell? page 13 of slides
 ba.N_packs  = 1;    % N. battery packs      [-]
 ba.eta      = 0.80; % Batt. EoL efficiency  [-] TODO
-ba.DoD      = 0.30; % Depth of discharge    [-] TODO chiedi a franci
+ba.DoD      = 0.15; % Depth of discharge    [-] cit. from franci
 
 ba.E        = (P_nam_ecl * T_ecl / X_ecl) / (ba.N_packs * ba.eta * ba.DoD) / 3600; % [Wh]
 
