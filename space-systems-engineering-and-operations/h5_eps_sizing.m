@@ -107,8 +107,9 @@ sa.P_bol_spec = P0 * sa.epsilon * sa.Id * cos(sa.SAA_rad); % Specific BoL power 
 % --- 3.3  Specific power at EoL ---
 sa.dpy          = 0.0275;           % Degradation per year          [-] (sl.34)
 sa.mission_yrs  = 3;                % Mission duration              [years]
+sa.deg_factor   = (1 - sa.dpy)^sa.mission_yrs;
 
-sa.P_eol_spec   = sa.P_bol_spec * (1 - sa.dpy)^sa.mission_yrs; % Specific EoL power  [W m^{-2}]
+sa.P_eol_spec   = sa.P_bol_spec * sa.deg_factor; % Specific EoL power  [W m^{-2}]
 
 % --- 3.4  Required solar array area [m^2] ---
 sa.A            = sa.P / sa.P_eol_spec;
