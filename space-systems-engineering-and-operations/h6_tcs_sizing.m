@@ -53,7 +53,7 @@ eps_SC = (A_sa*eps_sa_front + A_sa*eps_sa_back + ...
             (A_arms+A_hex)*eps_MIRAS_front + A_arms*eps_MIRAS_back + ...
             A_bus*5*eps_bus + A_hub*6*eps_hub) / A_tot;
 
-fprintf('\n============== SPACECRAFT PROPERTIES ===============\n')
+fprintf('\n========== SPACECRAFT PROPERTIES ==================\n')
 fprintf(' - Averaged Absorbtivity   = %.3f \n', alpha_SC)
 fprintf(' - Averaged Emissivity     = %.3f \n', eps_SC)
 fprintf(' - Total Surface Area      = %.2f m^2\n', A_tot)
@@ -77,7 +77,7 @@ eps_E       = 0.8;
 T_E         = 255;
 q_ir        = sigma * eps_E * T_E^4 * (R_E/r)^2;
 
-fprintf('\n============== HEAT FLUXES ===============\n')
+fprintf('\n========== HEAT FLUXES ============================\n')
 fprintf(' - Solar                   = %.2f W/m^2\n', q_sun)
 fprintf(' - Albedo                  = %.2f W/m^2\n', q_alb)
 fprintf(' - Infrafed                = %.2f W/m^2\n', q_ir)
@@ -104,7 +104,7 @@ T_space     = 3;
 % Q_emi      = sigma * eps_SC * A_tot * (T_SC^4 - T_space^4);
 
 
-fprintf('\n============== HEAT TRANSFER RATES ===============\n')
+fprintf('\n========== HEAT TRANSFER RATES ====================\n')
 fprintf(' - Solar                   = %.2f W\n', Q_sun)
 fprintf(' - Albedo                  = %.2f W\n', Q_alb)
 fprintf(' - Infrafed                = %.2f W\n', Q_ir)
@@ -116,7 +116,7 @@ fprintf(' - Internal C              = %.2f W\n', Q_int_C)
 T_SC_hot    = ((Q_sun + Q_ir + Q_alb + Q_int_H)/(sigma*eps_SC*A_tot) + T_space^4)^0.25;
 T_SC_cold   = ((Q_ir + Q_int_C)/(sigma*eps_SC*A_tot) + T_space^4)^0.25;
 
-fprintf('\n============== NON-REG TEMPERATURES ===============\n')
+fprintf('\n========== NON-REG TEMPERATURES ===================\n')
 fprintf(' - T_hot                   = %.1f °C\n', T_SC_hot-273.15)
 fprintf(' - T_cold                  = %.1f °C\n', T_SC_cold-273.15)
 
@@ -139,7 +139,7 @@ eps_SC_rad = ((A_sa*eps_sa_front + A_sa*(1-marg)*eps_sa_back + ...
             A_hub*3*eps_hub + A_hub*3*(1-marg)*eps_hub ) + ...
             A_rad_max * eps_rad) / A_tot;
 
-fprintf('\n============== with RADIATOR SC PROPERTIES ===============\n')
+fprintf('\n========== with RADIATOR SC PROPERTIES ============\n')
 fprintf(' - Max Radiator Area       = %.2f m^2 \n', A_rad_max)
 fprintf(' - Radiator Fraction       = %.2f %% \n', RAD_perc*100)
 fprintf(' - Radiator Absorbtivity   = %.3f \n', alpha_rad)
@@ -158,5 +158,5 @@ Q_ir        = A_tot * eps_SC_rad * q_ir;
 T_SC_hot_rad = ((Q_sun + Q_ir + Q_alb + Q_int_H)...
     / (sigma*eps_SC_rad*A_tot) + T_space^4)^0.25;
 
-fprintf('\n============== RADIATOR TEMP SOLUTION ===============\n')
+fprintf('\n========== RADIATOR TEMP SOLUTION =================\n')
 fprintf(' - T_hot_rad               = %.1f °C\n', T_SC_hot_rad-273.15)
