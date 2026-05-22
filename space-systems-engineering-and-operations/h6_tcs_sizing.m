@@ -6,10 +6,10 @@ clc, clearvars, close all
 % Tmax is the minimum of the maximum temperatures
 % Tmin is the maximum of the minumum temperatures
 
-T_max_SC            = 273.15 + 50;
-T_min_SC            = 273.15 - 20;
+T_max_SC            = 273.15 + 40;
+T_min_SC            = 273.15;
 
-%% AREA AND ALPHA/EPS CALCULATIONS (TODO)
+%% AREA AND ALPHA/EPS CALCULATIONS
 
 % A_tot calculation needed ---> turn into equivalent sphere
 % Different absorbptivity and emissivity for the SC surface
@@ -20,9 +20,17 @@ alpha_mli           = 0.39;
 eps_mli             = 0.78;
 
 % MIRAS arms (front: average LICEF + coating | back: coating)
-A_arms              = 4.08;
-alpha_MIRAS_front   = (0.30*0.1 + alpha_mli*0.9);
-eps_MIRAS_front     = (0.30*0.1 + eps_mli*0.9);
+A_licef_single      = pi*(0.165/2)^2;
+
+A_licef_arms        = A_licef_single*54;
+A_arms              = 0.4*3.4*3;
+licef_frac_arms     = A_licef_arms / A_arms;
+
+alpha_MIRAS_front   = (0.30*A_licef_arms*licef_frac_arms + ...
+    alpha_mli*A_arms*(1-licef_frac_arms));
+eps_MIRAS_front     = (0.30*A_licef_arms*licef_frac_arms + ...
+    eps_mli*A_arms*(1-licef_frac_arms));
+
 alpha_MIRAS_back    = alpha_mli;
 eps_MIRAS_back      = eps_mli;
 
@@ -33,9 +41,14 @@ eps_bus             = eps_mli;
 
 % Hub
 A_hub               = 0.78;
+A_licef_hex         = A_licef_single * 15;
 A_hex               = 1.098;
-alpha_hub           = alpha_mli;
-eps_hub             = eps_mli;
+licef_frac_hex      = A_licef_hex / A_hex;
+
+alpha_hub           = (0.30*A_licef_hex*licef_frac_hex + ...
+    alpha_mli*A_hex*(1-licef_frac_hex));
+eps_hub             = (0.30*A_licef_hex*licef_frac_hex + ...
+    eps_mli*A_hex*(1-licef_frac_hex));
 
 % TOTAL QUANTITIES
 A_tot       = A_arms*2 + A_bus*5 + A_hub*6 + A_hex;
@@ -49,7 +62,7 @@ eps_SC = ((A_arms+A_hex)*eps_MIRAS_front + A_arms*eps_MIRAS_back + ...
             A_bus*5*eps_bus + A_hub*6*eps_hub) / A_tot;
 
 fprintf('\n========== SPACECRAFT PROPERTIES ==================\n')
-fprintf(' - Averaged Absorbtivity   = %.3f \n', alpha_SC)
+fprintf(' - Averaged Absorptivity   = %.3f \n', alpha_SC)
 fprintf(' - Averaged Emissivity     = %.3f \n', eps_SC)
 fprintf(' - Total Surface Area      = %.2f m^2\n', A_tot)
 
@@ -69,7 +82,7 @@ q_alb       = q_sun * a * (R_E/r)^2;
 % INFRARED
 sigma       = 5.67e-8;
 eps_E       = 0.8;
-T_E         = 255;
+T_E         = 245;
 q_ir        = sigma * eps_E * T_E^4 * (R_E/r)^2;
 
 fprintf('\n========== HEAT FLUXES ============================\n')
@@ -115,11 +128,12 @@ fprintf(' - T_hot                   = %.1f °C\n', T_SC_hot-273.15)
 fprintf(' - T_cold                  = %.1f °C\n', T_SC_cold-273.15)
 
 %% RADIATORS
+
 frac        = 0.5;
 A_rad_max   = (A_arms + A_bus*4 + A_hub*2)*frac;
 RAD_frac    = A_rad_max / A_tot;
-eps_rad     = 0.85;
-alpha_rad   = 0.10;
+alpha_rad   = 0.13;
+eps_rad     = 0.77;
 
 alpha_SC_rad = (...
     ( ...
@@ -167,8 +181,8 @@ fprintf(' - Q Heaters + 25%% margin  = %.1f W\n', Q_heat_req)
 %% TIME-VARIANT CASE
 
 T_orb           = 100*60;
-tspan           = linspace(0, 30*T_orb, 10000);
-y0              = 273.15+10;
+tspan           = linspace(0, 15*T_orb, 1000000);
+y0              = 273.15+20;
 
 [t, y] = ode45( ...
     @(t, T) scThermalODE(t, T, Q_sun, Q_alb, Q_ir, Q_int_mode, eps_SC_rad), ...
@@ -178,17 +192,17 @@ plot(t/T_orb, y-273.15, 'LineWidth', 2.5)
 grid on
 
 ax = gca;
-ax.FontSize = 16; 
+ax.FontSize = 20; 
 
-title('Time-variant thermal simulation', 'FontSize', 20)
-xlabel('Orbits [-]', 'FontSize', 16); 
-ylabel('Temperature [°C]', 'FontSize', 16)
+%title('Time-variant thermal simulation', 'FontSize', 20)
+xlabel('Orbits [-]', 'FontSize', 24); 
+ylabel('Temperature [°C]', 'FontSize', 24)
 
 yline(T_min_SC-273.15, 'r', 'LineWidth', 1.5);
 yline(T_max_SC-273.15, 'r', 'LineWidth', 1.5);
-ylim([T_min_SC-50 T_max_SC+10]-273.15)
+ylim([T_min_SC-10 T_max_SC+10]-273.15)
 
-legend('Temperature', 'Min. Temp.', 'Max. Temp.', 'Location', 'southwest', 'FontSize', 14)
+legend('Temperature', 'Min/Max Temp.', 'FontSize', 20)
 
 fprintf('\n=========== TIME-VARIANT HEATER SOLUTION ==========\n')
 fprintf(' - Min Temp. Reached       = %.1f °C\n', min(y)-273.15)
