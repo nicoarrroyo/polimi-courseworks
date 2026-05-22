@@ -16,26 +16,26 @@ T_min_SC            = 273.15 - 20;
 % Weighted average needed
 
 % Material properties
-alpha_mli           = 0.78;
-eps_mli             = 0.39;
+alpha_mli           = 0.39;
+eps_mli             = 0.78;
 
 % MIRAS arms (front: average LICEF + coating | back: coating)
 A_arms              = 4.08;
-alpha_MIRAS_front   = (0.30*0.1 + eps_mli*0.9);
-eps_MIRAS_front     = (0.30*0.1 + alpha_mli*0.9);
-alpha_MIRAS_back    = eps_mli;
-eps_MIRAS_back      = alpha_mli;
+alpha_MIRAS_front   = (0.30*0.1 + alpha_mli*0.9);
+eps_MIRAS_front     = (0.30*0.1 + eps_mli*0.9);
+alpha_MIRAS_back    = alpha_mli;
+eps_MIRAS_back      = eps_mli;
 
 % PROTEUS (??? same material as MIRAS gold coating)
 A_bus               = 1;
-alpha_bus           = eps_mli; 
-eps_bus             = alpha_mli;
+alpha_bus           = alpha_mli; 
+eps_bus             = eps_mli;
 
 % Hub
 A_hub               = 0.78;
 A_hex               = 1.098;
-alpha_hub           = eps_mli;
-eps_hub             = alpha_mli;
+alpha_hub           = alpha_mli;
+eps_hub             = eps_mli;
 
 % TOTAL QUANTITIES
 A_tot       = A_arms*2 + A_bus*5 + A_hub*6 + A_hex;
@@ -174,14 +174,22 @@ y0              = 273.15+10;
     @(t, T) scThermalODE(t, T, Q_sun, Q_alb, Q_ir, Q_int_mode, eps_SC_rad), ...
     tspan, y0);
 
-plot(t/T_orb, y-273.15)
+plot(t/T_orb, y-273.15, 'LineWidth', 2.5)
 grid on
-title('Time-variant thermal simulation')
-xlabel('Orbits [-]'); ylabel('Temperature [°C]')
-yline(T_min_SC-273.15, color='r'); yline(T_max_SC-273.15, color='r');
+
+ax = gca;
+ax.FontSize = 16; 
+
+title('Time-variant thermal simulation', 'FontSize', 20)
+xlabel('Orbits [-]', 'FontSize', 16); 
+ylabel('Temperature [°C]', 'FontSize', 16)
+
+yline(T_min_SC-273.15, 'r', 'LineWidth', 1.5);
+yline(T_max_SC-273.15, 'r', 'LineWidth', 1.5);
 ylim([T_min_SC-50 T_max_SC+10]-273.15)
-legend('Temperature', 'Min. Temp.', 'Max. Temp.')
+
+legend('Temperature', 'Min. Temp.', 'Max. Temp.', 'Location', 'southwest', 'FontSize', 14)
 
 fprintf('\n=========== TIME-VARIANT HEATER SOLUTION ==========\n')
-fprintf(' - Min. Temp. Reached      = %.1f °C\n', min(y)-273.15)
-%fprintf(' - Q Heaters + 25%% margin  = %.1f W\n', heater_power)
+fprintf(' - Min Temp. Reached       = %.1f °C\n', min(y)-273.15)
+fprintf(' - Max Temp. Reached       = %.1f °C\n', max(y)-273.15)
