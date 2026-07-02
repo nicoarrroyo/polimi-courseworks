@@ -1,1 +1,130 @@
 
+Energy and Elements Produced by a Star
+
+We know that nuclear energy powers our star because the other forms of energy (gravitational potential, chemical) are simply not energetic enough to sustain our star's luminosity for the amount of time that we know it has existed. 
+
+Inside a nucleus, there are protons and neutrons. These inhabitants of the nucleus are called nucleons. Protons repel other protons due to the electromagnetic force, but attracted to all nucleons because of the strong nuclear force, which acts on a scale under $1 \text{ fm}$, a femtometer.
+
+Proton-proton chains are responsible for most of the energy produced by stars with masses similar to that of the Sun. 
+
+Where do hydrogens come from? TODO
+
+1 Why does a star's core allow for only fusion, and not fission?
+
+Binding energy per nucleon vs mass number A graph. For light nuclei, it is more convenient to be combined (fused) a nucleus with a higher mass number, therefore a higher binding energy per nucleon. In this combination, some energy is released. 
+
+2 How can two protons “melt” together?
+
+The two relevant forces are the Coulomb force (electrostatic repulsion) and the strong nuclear force (nuclear attraction). In order for the two protons to be "melted together", the kinetic energy of a proton must overcome the Coulombian potential energy. 
+
+$$
+
+This kinetic energy is the same as thermal energy at this scale, so we can find the temperature required for the minimum thermal energy (and therefore kinetic energy) to overcome the Coulombian potential energy. 
+
+$$
+
+In the core of the sun, we have $T_\text{Sun} \approx 1.5 \cdot 10^7 \text{ K}$, so the process seems impossible. However, this is the average kinetic energy of the protons in the sun, so even if the average temperature is only that of $T_\text{Sun}$, some protons will have individually much higher temperature. The tail end of this distribution of kinetic energies will be able to overcome the Coulombian potential energy. Once this potential energy is overcome, the strong force takes over. 
+
+Another reason (the main reason, in fact) that fusion can take place despite the relatively low temperature of the sun, is explained by quantum tunnelling. Protons described by quantum mechanics follows the behaviour of a wave, so each proton has an assosciated wavelength $\lambda = h / p$, where $h$ is the Planck constant and $p$ is the momentum. By solving the Schrodinger equation TODO-REVIEW. This quantum effect is the main contributor to fusion. 
+
+3 PPI Chain
+
+Explain the PPI chain, with some details on the “reagents” and the “products”, but without numbers by heart.
+
+Once two protons interact very energetically and with the aid of quantum behaviour, like in the core of a star, they fuse together to form an nucleus of deuterium. This nucleus consists of one proton and one neutron (two protons would be unstable) and they emit a positron and a neutrino. 
+
+$$
+
+The fusion of the two protons are slightly more massive than the deuterium, and this extra mass is converted into kinetic energy for the positron and the neutrino. Once the positron encounters an electron, the two particles annihilate, producing energy equal to their mass, in the form of a gamma ray. The total energy emitted in this reaction is $Q=1.44 \text{ MeV}$, which includes the kinetic energy converted from mass ($0.42 \text{ MeV}$) and the gamma ray from annihilation ($1.02 \text{ MeV}$). The neutrino also has mass and energy but it doesn't interact with anything, so that energy is considered wasted ($0.26 \text{ MeV}$).
+
+The lifetime of such a reaction is defined as the probability that that event happens, so a longer lifetime essentially means more waiting between this event happening. The lifetime of this reaction is $1.4 \cdot 10^{10} \text{ years}$, which is a very long time, but considering that there are about $10^{57}$ protons in the sun, it happens quite often. 
+
+$$
+
+The deuterium nucleus interacts with another proton, producing helium-3 and a gamma ray. 
+
+$$
+
+After this, two helium-3 nuclei interact to produce helium-4, the regular helium, and they emit two other protons. Guess what those protons will go on to do. $Q = 5.49 \text{ MeV}$, $\text{lifetime} = 1.5 \text{ sec}$. 
+
+$$
+
+This interaction produces energy in the form of gamma rays, neutrinos, and positron, and a helium nucleus. The binding energy of this configuration is higher with respect to the beginning. $Q = 12.86 \text{ MeV}$, $\text{lifetime} = 1 \text{ My}$. 
+
+So in total, for a PPI chain, the totally available energy is the first two steps doubled (because there have to be two ${}^3\text{He}$ nuclei for the third step to occur) summed with the third step. 
+
+$$
+
+About $0.7 \%$ of the mass in this process is converted into energy. 
+
+But how was the proton in the first reaction converted to a neutron to form deuterium. Neutrons are not stable particles, however, inside the nucleus, a proton can "pick up" energy (about $1.29 \text{ MeV}$) for transformation into a neutron. This is necessary because the mass of a neutron is slightly higher than that of a proton. The probability of 
+
+4 PPII Chain
+
+The first two reactions are the same as PPI. However, instead of two ${}^3\text{He}$ nuclei combining, one ${}^3\text{He}$ combines with a ${}^4\text{He}$, forming ${}^7\text{Be}$ and a gamma ray. 
+
+$$
+
+The lifetime of this interaction is still $1 \text{ My}$, but the energy is $Q=1.59 \text{ MeV}$, which is lower than in the PPI chain. 
+
+After this, the beryllium interacts with an electron to form lithium-7 and an emitted neutrino, with an energy of $0.86 \text{ MeV}$, which is different to the energy of the neutrino in PPI.
+
+$$
+
+With: $\text{lifetime} = 0.4 \text{ years}$, $Q = 0.92 \text{ MeV}$. 
+
+After this, the lithium interacts with another proton, giving rise to beryllium-8 and a gamma ray. 
+
+$$
+
+With $\text{lifetime} = 10 \text{ min}$, $Q = 17.35 \text{ MeV}$. The beryllium-8 is special because it is very unstable, so it decays into two helium-4 nuclei almost immediately. 
+
+$$
+
+With $\text{lifetime} = 10^{-16} \text{ sec}$. At the end of the day, we reach helium-4, just like in PPI. In fact, the total energy is similar. 
+
+5 PPIII Chain
+
+The first three reactions are the same as PPII. We have beryllium-7 and a gamma ray. However, instead of interacting with an electron to form lithium-7, the beryllium-7 interacts with a proton, forming boron-8. 
+
+$$
+
+With $\text{lifetime} = 66 \text{ years}$, $Q = 0.13 \text{ MeV}$. This boron then turns into beryllium-8 and a gamma ray (through beta decay). 
+
+$$
+
+With $\text{lifetime} = 1 \text{ sec}$, $Q = 10.8 \text{MeV}$. The positron $e^+$ is almost immediately annihilated with another electron, giving rise to two gamma rays, totalling the aforementioned $1.02 \text{ MeV}$, while the neutrino $\nu_\text{e}$ takes $7.2 \text{ MeV}$. The beryllium-8 follows the same fate of decaying into two helium-4 nuclei. 
+
+6 The CNO Cycle and the Production of Carbon
+
+Proton-proton chains are not the only way of “producing” energy in stars. For stars much more massive than the Sun ($T> 16 \text{ MK}$), the CNO cycle takes place. 
+
+You start with a nucleus of carbon-12, a series of reactions involving protons take place, and at the end, you arrive at carbon-12 again but in the mean time you have produced a helium-4 nucleus worth of energy again. 
+
+
+
+Similar to proton-proton chains, a nucleus of helium is produced, but here it is with a catalyst of carbon-12. A higher temperature allows for these processes to proceed faster, but the CNO cycle and the proton-proton chains are not mutually exclusive. The CNO cycle is much less important in colder stars, like our sun, but it still happens, just like proton-proton chains do happen in hotter stars. In our sun, the energy is produced mainly by PPI chains. 
+
+• PPI: $56\%$
+
+• PPII: $40\%$
+
+• PPIII: $0.05\%$
+
+• CNO: $3.2\%$
+
+But where does carbon-12 come from in this case? The 3-alpha process, which requires a temperature greater than $10^8 \text{ K}$, meaning it is completely absent in our sun. We will briefly talk about the 3-alpha process here and then talk about how our Sun creates carbon-12 despite not being able to do the 3-alpha process. 
+
+6.1 3-alpha Process
+
+Two helium-4 nuclei fuse together to form a beryllium-8 nucleus and expel energy through a gamma-ray. 
+
+\[
+
+The beryllium-8 nucleus decays rapidly, however there is still a small probability that it can have time to react with another helium-4 nucleus, which forms an excited-state version of carbon-12 (where the nucleons occupy a higher-energy state), which decays into a stable carbon-12 by emitting a gamma ray. 
+
+\[
+
+7 Which processes make the possible the formation of elements in the core of a star?
+
+8 How is it possible to produce elements heavier than iron?
